@@ -16,3 +16,6 @@ dist/
 # Local data and model weights
 frames/
 *.pt
+
+# Collected data
+data/
