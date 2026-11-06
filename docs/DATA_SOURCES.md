@@ -58,7 +58,7 @@ Use COMPASS highway cameras for Wait or Reroute, because 511 incidents are mostl
 ### Still to check
 
 - Log events over several days, because incidents were rare in this one snapshot.
-- Measure COMPASS refresh intervals across more cameras.
+- Repeat the COMPASS refresh test at other times of day. On Nov 6, 5 cameras all changed over 10 minutes, usually every 172 to 179 seconds, with gaps of 206 and 275 seconds also seen.
 - Remove duplicates between the 74 City of Toronto cameras in 511 and the city layer.
 - Confirm the terms for caching, displaying and rehosting 511 data and images.
 - Decide whether to downscale images before storing them, because COMPASS images are much sharper.
