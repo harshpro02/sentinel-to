@@ -22,15 +22,43 @@ Checked on Nov 6, 2026.
 
 ## Ontario 511
 
-**Status:** blocked until we have an API key.
+**Status:** working with an API key stored in `.env`.
 
-- `GET https://511on.ca/api/v2/get/event?format=json` returned `400 Invalid Key` without a key.
-- `GET https://511on.ca/api/v2/get/cameras?format=json` also returned `400` without a key.
+- **Endpoints:** `/api/v2/get/event` and `/api/v2/get/cameras`, using `format=json` and a `key` query parameter.
 - **Rate limit:** 10 calls per 60 seconds.
+- **Useful event fields:** `ID`, `RoadwayName`, `DirectionOfTravel`, `Description`, `Reported`, `LastUpdated`, `LanesAffected`, `Latitude`, `Longitude`, `EventType`, `IsFullClosure`.
+- **Useful camera fields:** `Id`, `Source`, `Roadway`, `Location`, `Latitude`, `Longitude`, `Views`.
+
+### Snapshot: Friday Nov 6, about 4 pm
+
+These counts use a rough Toronto bounding box, which also catches some nearby areas.
+
+| Measure | Result |
+|---|---|
+| Events in the box | 80 (79 roadwork, 1 incident) |
+| Incidents across Ontario | 2 |
+| Events within 1 km of a city camera | 41 of 80 |
+| Events within 1 km of a 511 camera | 80 of 80 |
+| 511 cameras in the box | 192 (114 COMPASS, 74 City of Toronto, 4 RWIS) |
+
+The one incident was a disabled vehicle on Highway 401 at Kennedy Road, with a COMPASS camera about 0.1 km away.
+
+### Camera images
+
+- `Views[].Url` returns a JPEG, for example `https://511on.ca/map/Cctv/710`.
+- No video field appears in the API response. The fields only give image links.
+- **COMPASS sample:** 1920x1080, about 5 minutes old when fetched.
+- **RWIS sample:** 800x450, about 17 minutes old when fetched.
+- `Last-Modified` showed the fetch time on the RWIS sample, so it can't be trusted for image age. Use image changes and the time printed on the image instead.
+
+### Decision
+
+Use COMPASS highway cameras for Wait or Reroute, because 511 incidents are mostly on highways. Keep city cameras as a separate street layer.
 
 ### Still to check
 
-- Inspect the real event fields.
-- Find out how many Toronto incidents are close to a city camera. Wait or Reroute depends on this.
-- Compare 511 cameras with city cameras and remove duplicates.
-- Confirm the terms for caching and displaying the data.
+- Log events over several days, because incidents were rare in this one snapshot.
+- Measure COMPASS refresh intervals across more cameras.
+- Remove duplicates between the 74 City of Toronto cameras in 511 and the city layer.
+- Confirm the terms for caching, displaying and rehosting 511 data and images.
+- Decide whether to downscale images before storing them, because COMPASS images are much sharper.
