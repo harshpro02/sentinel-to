@@ -2,6 +2,14 @@
 
 Checked on Nov 6, 2026.
 
+## Integration update — November 9, 2026
+
+Verified authenticated `get/event` and `get/cameras` calls. At the integration check they returned 449 events and 936 camera locations; these are a point-in-time observation, not fixed coverage guarantees. The initial approximate GTA query returned 219 events and 436 camera locations.
+
+The current app connects these feeds through a server-side FastAPI cache. The camera API documents image views with status and description; no video field or verified stream is integrated. A COMPASS snapshot request returned a valid JPEG, but a successful image response may contain an offline notice and is not a camera-health guarantee. The UI labels capture time unverified.
+
+Reviewed the current [Developer Access Agreement](https://511on.ca/developers/resources), [camera schema](https://511on.ca/help/endpoint/cameras), and [event schema](https://511on.ca/help/endpoint/event). The agreement provides data under the Open Government Licence unless otherwise specified, encourages attribution and requires communicating limitations. Source attribution and an as-available disclaimer appear in the interface. The app does not imply government endorsement or rehost recordings. Existing notes below describe the earlier research observations.
+
 ## City of Toronto traffic cameras
 
 **Status:** working, no key needed.

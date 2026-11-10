@@ -1,0 +1,89 @@
+import asyncio
+import os
+from contextlib import asynccontextmanager, suppress
+from pathlib import Path
+
+import httpx
+from dotenv import load_dotenv
+from fastapi import FastAPI, HTTPException, Query, Response
+
+from api.feeds import Feeds, FeedUnavailable, public_camera
+
+load_dotenv(Path(__file__).resolve().parents[1] / '.env')
+
+
+@asynccontextmanager
+async def lifespan(app):
+    async with httpx.AsyncClient(timeout=20, headers={'User-Agent': 'Sentinel/0.2'}, follow_redirects=False) as client:
+        app.state.feeds = Feeds(client, os.getenv('ONTARIO_511_API_KEY', ''))
+        async def cleanup():
+            while True:
+                await asyncio.sleep(60)
+                app.state.feeds.purge_images()
+        task = asyncio.create_task(cleanup())
+        try:
+            yield
+        finally:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+
+
+app = FastAPI(title='Sentinel API', lifespan=lifespan)
+
+
+@app.get('/api/health')
+async def health():
+    return {'status': 'ok', 'feedConfigured': bool(os.getenv('ONTARIO_511_API_KEY'))}
+
+
+def in_bounds(item, bbox):
+    lon, lat = item['coordinates']
+    return bbox is None or bbox[0] <= lon <= bbox[2] and bbox[1] <= lat <= bbox[3]
+
+
+def bounds(value):
+    if value is None:
+        return None
+    try:
+        box = [float(part) for part in value.split(',')]
+        if len(box) != 4 or not (-180 <= box[0] < box[2] <= 180 and -90 <= box[1] < box[3] <= 90):
+            raise ValueError()
+        return box
+    except ValueError:
+        raise HTTPException(422, 'bbox must be west,south,east,north in geographic degrees') from None
+
+
+async def feed(name):
+    try:
+        return await app.state.feeds.get(name)
+    except FeedUnavailable as error:
+        raise HTTPException(503, str(error), headers={'Retry-After': '60'}) from None
+
+
+@app.get('/api/incidents')
+async def incidents(bbox: str | None = Query(default=None)):
+    box = bounds(bbox)
+    result = await feed('event')
+    return {**result, 'items': [item for item in result['items'] if in_bounds(item, box)]}
+
+
+@app.get('/api/cameras')
+async def cameras(bbox: str | None = Query(default=None)):
+    box = bounds(bbox)
+    result = await feed('cameras')
+    return {**result, 'items': [public_camera(item) for item in result['items'] if in_bounds(item, box)]}
+
+
+@app.get('/api/cameras/{camera_id}/views/{view_id}/snapshot')
+async def snapshot(camera_id: str, view_id: str):
+    try:
+        image = await app.state.feeds.snapshot(camera_id, view_id)
+    except FeedUnavailable as error:
+        raise HTTPException(503, str(error), headers={'Retry-After': '60'}) from None
+    return Response(image['content'], media_type=image['media_type'], headers={
+        'Cache-Control': 'no-store',
+        'X-Sentinel-Retrieved-At': image['retrievedAt'],
+        'X-Sentinel-Camera-Health': 'frozen' if image['frozen'] else image['health'],
+        'X-Content-Type-Options': 'nosniff',
+    })

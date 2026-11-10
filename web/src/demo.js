@@ -1,0 +1,14 @@
+export const incidents = [
+  { id: 'demo-401', city: 'Toronto', type: 'incident', road: 'Highway 401', location: 'Westbound · Kennedy Road', title: 'Two lanes blocked', description: 'Example collision report. A real incident card will display the original official description and its update time.', coordinates: [-79.283, 43.773], severity: 'high', label: 'Collision', time: 'Example update time', source: 'Demo · planned source: Ontario 511' },
+  { id: 'demo-gardiner', city: 'Toronto', type: 'construction', road: 'Gardiner Expressway', location: 'Eastbound · Jameson Avenue', title: 'Lane restriction', description: 'Example construction notice. Closure dates and affected lanes will come from the official feed.', coordinates: [-79.443, 43.633], severity: 'medium', label: 'Construction', time: 'Example update time', source: 'Demo · planned source: Ontario 511' },
+  { id: 'demo-dvp', city: 'Toronto', type: 'incident', road: 'Don Valley Parkway', location: 'Northbound · Don Mills Road', title: 'Disabled vehicle', description: 'Example roadside incident. Its impact cannot be confirmed from this demonstration.', coordinates: [-79.338, 43.7], severity: 'medium', label: 'Road incident', time: 'Example update time', source: 'Demo · planned source: Ontario 511' },
+  { id: 'demo-ottawa', city: 'Ottawa', type: 'construction', road: 'Highway 417', location: 'Westbound · Downtown', title: 'Lane restriction', description: 'Fictional Ottawa construction example. This is not a current road report.', coordinates: [-75.69, 45.41], severity: 'medium', label: 'Construction', source: 'Demo · planned source: Ontario 511' },
+  { id: 'demo-london', city: 'London', type: 'incident', road: 'Highway 401', location: 'Eastbound · Wellington Road', title: 'Disabled vehicle', description: 'Fictional London roadside incident. This is not a current road report.', coordinates: [-81.22, 42.92], severity: 'medium', label: 'Road incident', source: 'Demo · planned source: Ontario 511' },
+  { id: 'demo-sudbury', city: 'Greater Sudbury', type: 'construction', road: 'Highway 17', location: 'Southwest corridor', title: 'Roadwork', description: 'Fictional Sudbury roadwork example. This is not a current road report.', coordinates: [-81.02, 46.43], severity: 'medium', label: 'Construction', source: 'Demo · planned source: Ontario 511' },
+  { id: 'demo-thunder-bay', city: 'Thunder Bay', type: 'incident', road: 'Highway 11/17', location: 'Thunder Bay Expressway', title: 'Lane blocked', description: 'Fictional Thunder Bay incident example. This is not a current road report.', coordinates: [-89.28, 48.43], severity: 'high', label: 'Road incident', source: 'Demo · planned source: Ontario 511' },
+];
+
+export function filterIncidents(items, query, layers) {
+  const search = query.trim().toLowerCase();
+  return items.filter((item) => layers[item.type] && `${item.city} ${item.road} ${item.location} ${item.title} ${item.label}`.toLowerCase().includes(search));
+}
