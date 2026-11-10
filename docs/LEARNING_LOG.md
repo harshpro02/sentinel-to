@@ -1,6 +1,6 @@
 # Learning log
 
-## November 9, 2026 — Explore frontend and Toronto skyline
+## November 9, 2026 :  Explore frontend and Toronto skyline
 
 Built a React/Vite Explore screen with demonstration incidents, road search, layer filtering, incident details, keyboard access, responsive layout and localhost hot reload. Replaced the initial MapLibre implementation with CesiumJS at Harsh's request. Added a downtown subset of the City's 2025 3D Massing geometry and a return-to-skyline control. No AWS resources were provisioned.
 
@@ -18,7 +18,7 @@ Interview question: Why must a stale or offline camera produce unknown condition
 
 Model answer: An unchanged image cannot establish present traffic conditions. I separate source availability from road status and expose timestamps so missing evidence never silently becomes a clearing or safe-road claim.
 
-## November 9, 2026 — Ontario map direction
+## November 9, 2026 :  Ontario map direction
 
 At Harsh's request, removed the skyline renderer and bundled building geometry, keeping the street map as the main view. Expanded the interface to Sentinel Ontario with southern/eastern/northern/province navigation and fictional examples in Ottawa, London, Sudbury and Thunder Bay as well as Toronto. City names are searchable. The preview still uses demo data; province-wide official ingestion and AWS deployment remain upcoming work.
 
@@ -30,7 +30,7 @@ Naming correction: the product is Sentinel, with no TO, ON or Ontario suffix. On
 
 Default view correction: centre the map on the GTA at a closer camera distance, with a GTA return button. Keep all Ontario accessible from the regional selector. A camera distance controls the visible map area; a smaller distance zooms closer without restricting the geographic coverage of the application.
 
-## November 9, 2026 — Official reports and camera evidence
+## November 9, 2026 :  Official reports and camera evidence
 
 Connected Ontario 511 events and cameras through FastAPI. Added region queries, source timestamps, stale/error states, report and camera lists, nearby camera links, still-image viewing and manual refresh. The application no longer imports demo records. Kept traffic trend unknown rather than inferring road clearance from images.
 
@@ -43,3 +43,9 @@ Verified live feed responses and a JPEG snapshot. The browser check passed actua
 Interview question: How do you avoid exhausting an upstream rate limit when many users open the app?
 
 Model answer: Cache the full upstream response on the server and share one in-flight fetch using a lock. Apply user-specific geographic filtering after retrieval. A single cache owner bounds upstream calls independently of browser count; scaling to several workers requires a shared cache or dedicated fetcher.
+
+## November 9: Isometric reference and deployment planning
+
+Inspected Isometric Toronto's public page, reference image, credits and method. Its illustrated image tiles use a deep-zoom presentation, rather than merely tilting Sentinel's existing street map. Recorded the visual direction and a small-area prototype boundary; no new illustrated renderer or third-party tile layer has been added to the app.
+
+Read the relevant local Claude memory and chat records. Preserve short explanations, interview ownership and no em dashes in public writing. Career/resume research stays outside the public project. The desired recent resume redesign was not found in the available local transcripts, so clarification is pending instead of inventing a prior decision.

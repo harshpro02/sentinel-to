@@ -2,7 +2,7 @@
 
 Checked on Nov 6, 2026.
 
-## Integration update — November 9, 2026
+## Integration update :  November 9, 2026
 
 Verified authenticated `get/event` and `get/cameras` calls. At the integration check they returned 449 events and 936 camera locations; these are a point-in-time observation, not fixed coverage guarantees. The initial approximate GTA query returned 219 events and 436 camera locations.
 

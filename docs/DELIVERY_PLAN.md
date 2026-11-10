@@ -1,16 +1,16 @@
 # Seven-day release plan
 
-Working window: November 9–16, 2026, Toronto time. This replaces the earlier November 12 target. Target a working, explainable AWS release; do not claim the full feature list is already implemented.
+Working window: November 9-16, 2026, Toronto time. This replaces the earlier November 12 target. Target a working, explainable AWS release; do not claim the full feature list is already implemented.
 
 | Day | Deliverable |
 | --- | --- |
-| Nov 9–10 | Ontario map UI, regional navigation, local preview and keyboard/mobile checks; skyline removed at user's request |
-| Nov 10–11 | FastAPI and province-wide official 511 ingestion, freshness and failure states |
-| Nov 11–12 | PostgreSQL persistence, migrations, source timestamps, incident details and timeline |
-| Nov 12–13 | Official camera discovery and health states; only authorized video sources, otherwise explicitly labelled images |
-| Nov 13–14 | Saved places/corridors and relevant alerts; verify additional weather/transit sources before integrating |
-| Nov 14–15 | Docker Compose, EC2, IAM-role access, S3 retention, logging, HTTPS and cost review |
-| Nov 15–16 | Failure/recovery checks, measured performance, clean-checkout instructions, public demo and portfolio walkthrough |
+| Nov 9-10 | Ontario map UI, regional navigation, local preview and keyboard/mobile checks; skyline removed at user's request |
+| Nov 10-11 | FastAPI and province-wide official 511 ingestion, freshness and failure states |
+| Nov 11-12 | PostgreSQL persistence, migrations, source timestamps, incident details and timeline |
+| Nov 12-13 | Official camera discovery and health states; only authorized video sources, otherwise explicitly labelled images |
+| Nov 13-14 | Saved places/corridors and relevant alerts; verify additional weather/transit sources before integrating |
+| Nov 14-15 | Docker Compose, EC2, IAM-role access, S3 retention, logging, HTTPS and cost review |
+| Nov 15-16 | Failure/recovery checks, measured performance, clean-checkout instructions, public demo and portfolio walkthrough |
 
 Video access is not guaranteed by this timeline. Do not fabricate a stream, use synthetic footage as evidence, or label images live video.
 

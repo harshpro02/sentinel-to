@@ -76,7 +76,7 @@ Capture time is unverified, even when HTTP succeeds or the API says Enabled. The
 
 The street map uses OpenStreetMap imagery with attribution visible in the viewer. No skyline geometry, Cesium ion token or paid building service is used. Ontario 511 supplies province-wide road reports, but this does not imply every municipal street is monitored. Regional bounding boxes are approximate navigation/filter extents, not administrative boundaries.
 
-Ontario 511 data is provided as available and may differ from actual road conditions. Source attribution links to [Ontario 511](https://511on.ca/). See its [Developer Access Agreement](https://511on.ca/developers/resources) and [Open Government Licence – Ontario](https://www.ontario.ca/page/open-government-licence-ontario). Publicly accessible source images remain subject to their provider's applicable terms; Sentinel does not claim endorsement or control of camera availability. No verified video stream is integrated.
+Ontario 511 data is provided as available and may differ from actual road conditions. Source attribution links to [Ontario 511](https://511on.ca/). See its [Developer Access Agreement](https://511on.ca/developers/resources) and [Open Government Licence - Ontario](https://www.ontario.ca/page/open-government-licence-ontario). Publicly accessible source images remain subject to their provider's applicable terms; Sentinel does not claim endorsement or control of camera availability. No verified video stream is integrated.
 
 ## Planned AWS deployment
 
