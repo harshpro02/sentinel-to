@@ -43,6 +43,48 @@ class CityNormalizationTests(unittest.TestCase):
 
 
 class CityFeedTests(unittest.IsolatedAsyncioTestCase):
+    async def test_slow_camera_does_not_block_another_and_matching_requests_share_download(self):
+        started, release = asyncio.Event(), asyncio.Event()
+        calls = []
+        async def handler(request):
+            calls.append(request.url.path)
+            if request.url.path.endswith('8032.jpg'):
+                started.set()
+                await release.wait()
+            return httpx.Response(200, content=b'\x89PNG\r\n\x1a\nimage')
+        first = normalize_city_cameras([FEATURE])[0]
+        second = {**first, 'id': 'toronto-camera-8033', 'views': [{**first['views'][0], '_url': CITY_IMAGE.replace('8032', '8033')}]}
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            feeds = Feeds(client, '')
+            catalog = {'items': [first, second]}
+            slow = asyncio.create_task(feeds.snapshot(first['id'], 'street', catalog=catalog))
+            try:
+                await asyncio.wait_for(started.wait(), timeout=1)
+                others = await asyncio.wait_for(asyncio.gather(*(feeds.snapshot(second['id'], 'street', catalog=catalog) for _ in range(10))), timeout=1)
+                self.assertEqual(len(others), 10)
+                self.assertEqual(calls.count('/transportation/tmc/rescucameraimages/CameraImages/loc8033.jpg'), 1)
+            finally:
+                release.set()
+                await slow
+            self.assertEqual(feeds.image_locks, {})
+
+    async def test_failed_images_retry_after_short_backoff(self):
+        clock, calls = [0], []
+        def handler(request):
+            calls.append(request.url.path)
+            return httpx.Response(503) if len(calls) == 1 else httpx.Response(200, content=b'\x89PNG\r\n\x1a\nimage')
+        first = normalize_city_cameras([FEATURE])[0]
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            feeds = Feeds(client, '', clock=lambda: clock[0])
+            for _ in range(2):
+                with self.assertRaises(FeedUnavailable):
+                    await feeds.snapshot(first['id'], 'street', catalog={'items': [first]})
+            self.assertEqual(len(calls), 1)
+            clock[0] = 11
+            image = await feeds.snapshot(first['id'], 'street', catalog={'items': [first]})
+            self.assertEqual(image['media_type'], 'image/png')
+            self.assertEqual(len(calls), 2)
+
     async def test_concurrent_city_requests_share_cache_and_preserve_stale_metadata(self):
         calls, clock = [], [0]
         def handler(request):
@@ -95,5 +137,9 @@ class CombinedCameraApiTests(unittest.TestCase):
             self.assertTrue(body['stale'])
             self.assertIn('incomplete', body['message'])
             self.assertNotIn(CITY_IMAGE, response.text)
+            app.state.feeds.get.reset_mock()
+            app.state.feeds.snapshot = AsyncMock(return_value={'content': b'\x89PNG\r\n\x1a\nimage', 'media_type': 'image/png', 'retrievedAt': '2026-11-10T12:00:00+00:00', 'health': 'unverified', 'frozen': False})
+            self.assertEqual(client.get('/api/cameras/toronto-camera-8032/views/street/snapshot').status_code, 200)
+            app.state.feeds.get.assert_not_awaited()
             app.state.city_cameras.get = AsyncMock(side_effect=FeedUnavailable('test'))
             self.assertEqual(client.get('/api/cameras').status_code, 503)

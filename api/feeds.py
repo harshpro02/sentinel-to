@@ -96,7 +96,9 @@ class Feeds:
         self.locks = {name: asyncio.Lock() for name in ['event', 'cameras', *RESOURCES]}
         self.request_times = deque()
         self.images = OrderedDict()
-        self.image_lock = asyncio.Lock()
+        self.image_locks = {}
+        self.image_slots = asyncio.Semaphore(4)
+        self.image_failures = OrderedDict()
 
     def purge_images(self):
         for key, entry in list(self.images.items()):
@@ -144,34 +146,57 @@ class Feeds:
         if not view or not view['enabled'] or not official_image_url(view.get('_url')):
             raise FeedUnavailable('This official camera view is unavailable.')
         key = (camera_id, view_id)
-        async with self.image_lock:
-            now = self.clock()
-            previous = self.images.get(key)
-            if previous and now - previous['checked'] < 60:
-                self.images.move_to_end(key)
-                return previous
-            try:
-                async with self.client.stream('GET', view['_url']) as response:
-                    response.raise_for_status()
-                    data = bytearray()
-                    async for chunk in response.aiter_bytes():
-                        data.extend(chunk)
-                        if len(data) > 3_000_000:
-                            raise ValueError()
-                content = bytes(data)
-                media_type = 'image/jpeg' if content.startswith(b'\xff\xd8\xff') else 'image/png' if content.startswith(b'\x89PNG\r\n\x1a\n') else None
-                if not media_type:
-                    raise ValueError()
-            except (httpx.HTTPError, ValueError):
-                raise FeedUnavailable('Camera image unavailable. Road conditions are unknown.') from None
-            digest = hashlib.sha256(content).hexdigest()
-            changed = previous['changed'] if previous and previous['hash'] == digest else now
-            entry = {'content': content, 'media_type': media_type, 'hash': digest, 'checked': now, 'changed': changed, 'retrievedAt': utc_now(), 'health': 'unchanged' if previous and digest == previous['hash'] else 'unverified', 'frozen': now - changed >= 600}
-            self.images[key] = entry
+        entry_lock = self.image_locks.setdefault(key, {'lock': asyncio.Lock(), 'users': 0})
+        entry_lock['users'] += 1
+        try:
+            async with entry_lock['lock']:
+                return await self.cached_snapshot(key, view['_url'])
+        finally:
+            entry_lock['users'] -= 1
+            if entry_lock['users'] == 0:
+                self.image_locks.pop(key, None)
+
+    async def download_image(self, url):
+        async with self.image_slots:
+            async with self.client.stream('GET', url) as response:
+                response.raise_for_status()
+                data = bytearray()
+                async for chunk in response.aiter_bytes():
+                    data.extend(chunk)
+                    if len(data) > 3_000_000:
+                        raise ValueError()
+            content = bytes(data)
+            media_type = 'image/jpeg' if content.startswith(b'\xff\xd8\xff') else 'image/png' if content.startswith(b'\x89PNG\r\n\x1a\n') else None
+            if not media_type:
+                raise ValueError()
+            return content, media_type
+
+    async def cached_snapshot(self, key, url):
+        now = self.clock()
+        previous = self.images.get(key)
+        if previous and now - previous['checked'] < 60:
             self.images.move_to_end(key)
-            while len(self.images) > 64:
-                self.images.popitem(last=False)
-            return entry
+            return previous
+        failure = self.image_failures.get(key)
+        if failure is not None and now - failure < 10:
+            raise FeedUnavailable('Camera image temporarily unavailable. Try again or choose a nearby camera.')
+        try:
+            content, media_type = await asyncio.wait_for(self.download_image(url), timeout=12)
+        except (httpx.HTTPError, ValueError, asyncio.TimeoutError):
+            self.image_failures[key] = self.clock()
+            self.image_failures.move_to_end(key)
+            while len(self.image_failures) > 128:
+                self.image_failures.popitem(last=False)
+            raise FeedUnavailable('Camera image temporarily unavailable. Try again or choose a nearby camera.') from None
+        self.image_failures.pop(key, None)
+        digest = hashlib.sha256(content).hexdigest()
+        changed = previous['changed'] if previous and previous['hash'] == digest else now
+        entry = {'content': content, 'media_type': media_type, 'hash': digest, 'checked': self.clock(), 'changed': changed, 'retrievedAt': utc_now(), 'health': 'unchanged' if previous and digest == previous['hash'] else 'unverified', 'frozen': now - changed >= 600}
+        self.images[key] = entry
+        self.images.move_to_end(key)
+        while len(self.images) > 64:
+            self.images.popitem(last=False)
+        return entry
 
 
 def public_camera(item):

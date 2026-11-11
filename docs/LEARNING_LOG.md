@@ -92,3 +92,11 @@ Interview question: Why inspect image bytes instead of trusting Content-Type? Mo
 ## November 10: Heading encoding and map branding cleanup
 
 Changed the heading to plain ASCII punctuation to avoid the broken apostrophe shown in the screenshot. Removed the Cesium ion logo through the documented CreditDisplay.cesiumCredit setting, preserving data attribution. Replaced the library's outdated default MapQuest credit with a visible linked OpenStreetMap contributors attribution appropriate to the configured tile source. Verified the heading, absent logo and map credits in the browser without JavaScript errors.
+
+## November 10: Camera failure recovery
+
+Jarvis/Carlton returned a valid image during diagnosis, so the screenshot did not establish a permanent outage. Found a single global image lock that could queue selected views behind thumbnails. Replaced it with per-view locks, up to four concurrent downloads and a 12-second download/queue deadline. Matching requests share cached image bytes. Failed views have a bounded ten-second backoff instead of repeatedly hitting the source; direct City snapshots do not wait for the 511 catalogue.
+
+The error panel now explains the retrieval failure, offers a clearly labelled nearby camera and a short retry countdown. It hides the unusable enlarge button and absent retrieval timestamp. Successful refreshes retain the normal 60-second interval; failed images remain unknown, with no invented replacement footage.
+
+Validation: 29 backend tests passed, including failure/backoff recovery and a blocked camera alongside a successful concurrent view. Browser testing simulated an unavailable Jarvis/Carlton snapshot, verified the nearby action and absence of dead controls, then retried successfully without JavaScript errors. The production build passed. Source-side outages and camera quality remain outside Sentinel's control.

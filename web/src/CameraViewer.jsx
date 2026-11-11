@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Expand, Maximize, RefreshCw, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { Expand, EyeOff, Maximize, RefreshCw, X, ZoomIn, ZoomOut } from 'lucide-react';
 import { formatTime } from './feeds';
 
 export default function CameraViewer({ camera, stale, nearby = [], onSelectCamera }) {
@@ -34,18 +34,29 @@ export default function CameraViewer({ camera, stale, nearby = [], onSelectCamer
     setRetrievedAt(null);
     setDimensions(null);
     setZoom(1);
-    setNextRefresh(Date.now() + 60000);
+    setNextRefresh(0);
     fetch(`/api/cameras/${encodeURIComponent(camera.id)}/views/${encodeURIComponent(viewId)}/snapshot`, { signal: controller.signal })
       .then(async (response) => {
-        if (!response.ok) throw new Error('Camera unavailable');
+        if (!response.ok) {
+          const error = new Error('Camera unavailable');
+          const retry = Number(response.headers.get('Retry-After'));
+          error.retrySeconds = retry > 0 ? Math.min(60, retry) : 10;
+          throw error;
+        }
         const blob = await response.blob();
         if (disposed) return;
         objectUrl = URL.createObjectURL(blob);
         setImage(objectUrl);
+        setNextRefresh(Date.now() + 60000);
         setRetrievedAt(response.headers.get('X-Sentinel-Retrieved-At'));
         setHealth(response.headers.get('X-Sentinel-Camera-Health') ?? 'unknown');
       })
-      .catch(() => { if (!disposed) setError('Image unavailable. Road conditions are unknown.'); })
+      .catch((error) => {
+        if (!disposed) {
+          setError('The snapshot could not be loaded. The source or connection may be temporarily unavailable.');
+          setNextRefresh(Date.now() + (error.retrySeconds ?? 10) * 1000);
+        }
+      })
       .finally(() => { clearTimeout(timeout); if (!disposed) setLoading(false); });
     return () => { disposed = true; controller.abort(); clearTimeout(timeout); if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [camera.id, viewId, refresh]);
@@ -69,18 +80,19 @@ export default function CameraViewer({ camera, stale, nearby = [], onSelectCamer
     <div className="camera-source"><span>SNAPSHOT · {imageSource.toUpperCase()}</span><strong>{camera.provider}</strong></div>
     {stale && <p className="camera-warning" role="status">Some camera metadata is delayed or unavailable. Coverage and availability may have changed.</p>}
     {camera.views.length > 1 && <label className="view-selector">Camera view<select aria-label="Camera view" value={viewId} onChange={(event) => setViewId(event.target.value)}>{camera.views.filter((view) => view.enabled).map((view, index) => <option key={view.id} value={view.id}>{view.description === 'Camera view' ? `View ${index + 1}` : view.description}</option>)}</select></label>}
-    <div className="snapshot-frame" aria-live="polite">
+    <div className={error ? 'snapshot-frame snapshot-failed' : 'snapshot-frame'} aria-live="polite">
       {loading && <p>Retrieving official image…</p>}
       {!viewId && <p>No enabled image view is available. Conditions are unknown.</p>}
-      {error && <p role="status">{error}</p>}
-      {image && <img src={image} alt={`${camera.road}: ${camera.location}. Official snapshot; capture time unverified.`} onLoad={(event) => setDimensions([event.currentTarget.naturalWidth, event.currentTarget.naturalHeight])} onError={() => { setImage(null); setError('Image could not be displayed. Conditions are unknown.'); }} />}
+      {error && <div className="camera-unavailable" role="status"><EyeOff size={25} /><h4>This image could not load</h4><p>{error}</p>{nearby[0] && <button onClick={() => onSelectCamera(nearby[0])}>Try {nearby[0].road} / {nearby[0].location}<small>{nearby[0].distance.toFixed(1)} km away · a different camera</small></button>}</div>}
+      {image && <img src={image} alt={`${camera.road}: ${camera.location}. Official snapshot; capture time unverified.`} onLoad={(event) => setDimensions([event.currentTarget.naturalWidth, event.currentTarget.naturalHeight])} onError={() => { setImage(null); setError('The image could not be displayed. Try again or choose another camera.'); setNextRefresh(Date.now() + 10000); }} />}
     </div>
-    <button className="expand-camera" disabled={!image} onClick={() => { setZoom(1); dialog.current.showModal(); }}><Expand size={15} /> Open larger view</button>
+    {image && <button className="expand-camera" onClick={() => { setZoom(1); dialog.current.showModal(); }}><Expand size={15} /> Open larger view</button>}
     {dimensions && <p className="snapshot-time">Original image: {dimensions[0]} × {dimensions[1]} pixels. Zoom enlarges the source without adding detail.</p>}
     {health === 'frozen' && <p className="camera-warning">Same image as a check at least 10 minutes ago. The feed may be frozen; conditions are unknown.</p>}
     {health === 'unchanged' && <p className="camera-warning">Image unchanged since the last check. Freshness is unverified.</p>}
-    <p className="snapshot-time">Image retrieved: {formatTime(retrievedAt)} (Toronto time)<br />Capture time is unverified. This is a still image, not live video. The provider may display an offline notice.</p>
-    <button className="refresh-image" disabled={loading || wait > 0 || !viewId} onClick={() => setRefresh(refresh + 1)}><RefreshCw size={13} />{wait > 0 ? `Refresh available in ${wait}s` : 'Refresh snapshot'}</button>
+    {retrievedAt && image && <p className="snapshot-time">Image retrieved: {formatTime(retrievedAt)} (Toronto time)<br />Capture time is unverified. This is a still image, not live video. The provider may display an offline notice.</p>}
+    {error && <p className="snapshot-time">No image was retrieved. Road conditions are unknown.</p>}
+    <button className="refresh-image" disabled={loading || wait > 0 || !viewId} onClick={() => setRefresh(refresh + 1)}><RefreshCw size={13} />{loading ? 'Loading snapshot…' : wait > 0 ? `${error ? 'Retry' : 'Refresh'} available in ${wait}s` : error ? 'Try this camera again' : 'Refresh snapshot'}</button>
     {nearby.length > 0 && <section className="nearby-cameras"><h4>Try another nearby angle</h4><p>Different cameras may face different streets.</p>{nearby.map((next) => <button key={next.id} onClick={() => onSelectCamera(next)}><span>{next.road}<small>{next.location} · {next.distance.toFixed(1)} km</small></span></button>)}</section>}
     <p className="snapshot-time">Source: <a href={sourceLink} target="_blank" rel="noreferrer">{imageSource}</a>{camera.alsoListedBy && ` · Also listed by ${camera.alsoListedBy}`}</p>
     <dialog ref={dialog} className="camera-dialog" aria-labelledby="camera-dialog-title" onClose={() => setZoom(1)}>

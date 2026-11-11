@@ -157,10 +157,12 @@ async def incident_history(incident_id: str, limit: int = Query(default=20, ge=1
 @app.get('/api/cameras/{camera_id}/views/{view_id}/snapshot')
 async def snapshot(camera_id: str, view_id: str):
     try:
-        catalog = await camera_catalog() if camera_id.startswith('toronto-camera-') else None
+        catalog = None
+        if camera_id.startswith('toronto-camera-'):
+            catalog = await app.state.city_cameras.get() if view_id == 'street' else await camera_catalog()
         image = await app.state.feeds.snapshot(camera_id, view_id, catalog=catalog)
     except FeedUnavailable as error:
-        raise HTTPException(503, str(error), headers={'Retry-After': '60'}) from None
+        raise HTTPException(503, str(error), headers={'Retry-After': '10'}) from None
     return Response(image['content'], media_type=image['media_type'], headers={
         'Cache-Control': 'no-store',
         'X-Sentinel-Retrieved-At': image['retrievedAt'],
