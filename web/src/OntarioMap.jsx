@@ -1,9 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BoundingSphere, Cartesian2, Cartesian3, Color, defined, DistanceDisplayCondition, HeadingPitchRange, ImageryLayer, Ion, LabelStyle, Math as CesiumMath, Matrix4, NearFarScalar, OpenStreetMapImageryProvider, ScreenSpaceEventHandler, ScreenSpaceEventType, Viewer } from 'cesium';
+import { BoundingSphere, Cartesian2, Cartesian3, Color, CustomDataSource, defined, DistanceDisplayCondition, HeadingPitchRange, ImageryLayer, Ion, LabelStyle, Math as CesiumMath, Matrix4, NearFarScalar, OpenStreetMapImageryProvider, ScreenSpaceEventHandler, ScreenSpaceEventType, Viewer } from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 
 export const regions = {
-  gta: { label: 'Greater Toronto Area', coordinates: [-79.55, 43.8], range: 120000, bounds: [-80.3, 43.2, -78.5, 44.5] },
+  gta: { label: 'Greater Toronto Area', coordinates: [-79.55, 43.8], range: 65000, bounds: [-80.3, 43.2, -78.5, 44.5] },
   southern: { label: 'Southern Ontario', coordinates: [-80.5, 44.1], range: 550000, bounds: [-83.2, 41.6, -77.5, 45.8] },
   eastern: { label: 'Eastern Ontario', coordinates: [-76.5, 45.0], range: 320000, bounds: [-78.5, 43.6, -74.2, 46.4] },
   northern: { label: 'Northern Ontario', coordinates: [-85.0, 49.5], range: 1250000, bounds: [-95.2, 45.8, -79.0, 56.9] },
@@ -15,6 +15,7 @@ const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)'
 export default function OntarioMap({ items, selected, onSelect, tilted, region, resetCount }) {
   const container = useRef(null);
   const viewer = useRef(null);
+  const markers = useRef(null);
   const selectRef = useRef(onSelect);
   const itemsRef = useRef(items);
   const [ready, setReady] = useState(false);
@@ -30,13 +31,34 @@ export default function OntarioMap({ items, selected, onSelect, tilted, region, 
       const imagery = new OpenStreetMapImageryProvider({ url: 'https://tile.openstreetmap.org/', maximumLevel: 19 });
       imagery.errorEvent.addEventListener(() => setMapError('Some street imagery could not load. You can still browse the incident list.'));
       instance = new Viewer(container.current, {
-        baseLayer: new ImageryLayer(imagery, { brightness: 0.55, saturation: 0.2 }),
+        baseLayer: new ImageryLayer(imagery, { brightness: 0.94, saturation: 0.55 }),
         baseLayerPicker: false, geocoder: false, animation: false, timeline: false,
         homeButton: false, sceneModePicker: false, navigationHelpButton: false,
         fullscreenButton: false, infoBox: false, selectionIndicator: false,
         requestRenderMode: true, maximumRenderTimeChange: Infinity,
       });
       viewer.current = instance;
+      const source = new CustomDataSource('reports');
+      markers.current = source;
+      instance.dataSources.add(source);
+      source.clustering.enabled = true;
+      source.clustering.pixelRange = 42;
+      source.clustering.minimumClusterSize = 3;
+      source.clustering.clusterEvent.addEventListener((entities, cluster) => {
+        cluster.billboard.show = false;
+        cluster.point.show = false;
+        cluster.label.show = true;
+        cluster.label.text = String(entities.length);
+        cluster.label.font = '600 13px sans-serif';
+        cluster.label.fillColor = Color.WHITE;
+        cluster.label.outlineWidth = 0;
+        cluster.label.showBackground = true;
+        cluster.label.backgroundColor = Color.fromCssColorString('#263e49');
+        cluster.label.backgroundPadding = new Cartesian2(10, 8);
+        cluster.label.pixelOffset = Cartesian2.ZERO;
+        cluster.label.disableDepthTestDistance = Infinity;
+        cluster.label.id = { clusterMembers: entities.map((entity) => entity.position.getValue(instance.clock.currentTime)) };
+      });
       instance.scene.backgroundColor = Color.fromCssColorString('#0a1016');
       instance.scene.globe.baseColor = Color.fromCssColorString('#172530');
       instance.scene.globe.enableLighting = false;
@@ -49,6 +71,11 @@ export default function OntarioMap({ items, selected, onSelect, tilted, region, 
       handler.setInputAction((click) => {
         const picked = instance.scene.pick(click.position);
         if (!defined(picked?.id)) return;
+        if (picked.id.clusterMembers) {
+          const sphere = BoundingSphere.fromPoints(picked.id.clusterMembers);
+          instance.camera.flyToBoundingSphere(sphere, { offset: new HeadingPitchRange(0, -Math.PI / 2, Math.max(sphere.radius * 4, 2500)), duration: reducedMotion() ? 0 : 0.6 });
+          return;
+        }
         const item = itemsRef.current.find((candidate) => candidate.id === picked.id.id);
         if (item) selectRef.current(item);
       }, ScreenSpaceEventType.LEFT_CLICK);
@@ -68,13 +95,14 @@ export default function OntarioMap({ items, selected, onSelect, tilted, region, 
     if (!ready || !viewer.current) return;
     const instance = viewer.current;
     instance.entities.removeAll();
+    markers.current.entities.removeAll();
     items.forEach((item) => {
       const active = selected?.id === item.id;
-      instance.entities.add({
+      (active ? instance.entities : markers.current.entities).add({
         id: item.id,
         position: Cartesian3.fromDegrees(...item.coordinates, 12),
-        point: { pixelSize: active ? 17 : 12, color: Color.fromCssColorString(active ? '#a9e8d0' : item.type === 'camera' ? '#93badb' : item.severity === 'high' ? '#f09081' : '#dfb573'), outlineColor: Color.fromCssColorString('#0d151e'), outlineWidth: 4, disableDepthTestDistance: Infinity },
-        label: { text: item.road.toUpperCase(), distanceDisplayCondition: new DistanceDisplayCondition(0, active ? Number.MAX_VALUE : 60000), font: '11px monospace', fillColor: Color.fromCssColorString('#e7edf2'), style: LabelStyle.FILL_AND_OUTLINE, outlineColor: Color.fromCssColorString('#0a1016'), outlineWidth: 4, pixelOffset: new Cartesian2(0, -24), scaleByDistance: new NearFarScalar(250000, 1, 1800000, 0.6), disableDepthTestDistance: Infinity },
+        point: { pixelSize: active ? 16 : 9, color: Color.fromCssColorString(active ? '#a9e8d0' : item.type === 'camera' ? '#93badb' : item.severity === 'high' ? '#f09081' : '#dfb573'), outlineColor: Color.WHITE, outlineWidth: 2, disableDepthTestDistance: Infinity },
+        label: { show: active, text: item.road.toUpperCase(), distanceDisplayCondition: new DistanceDisplayCondition(0, active ? Number.MAX_VALUE : 60000), font: '11px monospace', fillColor: Color.fromCssColorString('#e7edf2'), style: LabelStyle.FILL_AND_OUTLINE, outlineColor: Color.fromCssColorString('#0a1016'), outlineWidth: 4, pixelOffset: new Cartesian2(0, -24), scaleByDistance: new NearFarScalar(250000, 1, 1800000, 0.6), disableDepthTestDistance: Infinity },
       });
     });
     instance.scene.requestRender();

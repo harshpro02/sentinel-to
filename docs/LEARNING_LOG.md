@@ -60,3 +60,11 @@ Validation: 17 backend tests passed, including real isolated PostgreSQL tests fo
 Limitations: observed report changes do not prove road clearance; no historical data before collection began; history UI, AWS, HTTPS, public request limits and backup/recovery automation remain to implement. Local container data lives in a persistent Docker volume, not Git. AWS resources were not provisioned.
 
 Interview question: Why use different database accounts for migrations and the API? Model answer: migrations need permission to change the schema, while normal requests only need to read and write report data. Restricting the runtime account limits damage if a request path is compromised.
+
+## November 10: Map readability pass
+
+Reduced the header and sidebar footprint, centered the map in the remaining desktop space, brightened street imagery, removed the dimming overlay and tightened the GTA starting view. Added screen-space marker clustering with report counts and click-to-zoom. Selected reports remain visible independently; source data and API handling are unchanged.
+
+Concept: clustering groups nearby screen positions at the current zoom, not administrative areas or incident severity. Counts change as users zoom or toggle layers. The list remains available for individual report selection.
+
+Validation: inspected the desktop screenshot; browser checks exercised a cluster-area click, report selection, back navigation, GTA reset and a 390-pixel mobile viewport without JavaScript errors or horizontal overflow. Four existing frontend tests and the production build passed. The existing Cesium bundle-size warning remains. Illustrated isometric rendering is still a separate prototype.

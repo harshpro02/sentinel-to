@@ -51,6 +51,8 @@ Open http://127.0.0.1:5173. Keep the server running to see frontend changes auto
 
 The Vite development server proxies `/api` to FastAPI on port 8000. Search matches road names, report details and camera providers. The region selector changes the feed query bounds as well as the map view. Road reports and cameras have separate lists; the Cameras list enables camera markers. An incident lists up to four cameras within 5 km, without claiming they face the incident's direction.
 
+Nearby map markers are grouped into numbered clusters to reduce overlap. Numbers count visible-layer reports/cameras, not severity or traffic volume. Click a group to zoom in; the accessible list retains the individual reports. The selected report stays separate from clusters.
+
 Real feed failures show an error or clearly marked stale results; the running app never silently substitutes demo incidents. The old `demo.js` data remains solely for the existing filtering tests and is not imported by the live application.
 
 ## Checks
