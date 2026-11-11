@@ -1,6 +1,6 @@
 # Sentinel
 
-An Ontario road awareness map built from official Ontario 511 reports and camera information. Opens over the GTA, with province-wide regional navigation, searchable reports, source timestamps and nearby official camera snapshots.
+An Ontario road awareness map built from official Ontario 511 reports and camera information, plus direct City of Toronto cameras. Opens over the GTA, with province-wide regional navigation, searchable reports, source timestamps and nearby official camera snapshots.
 
 **Wait or Reroute, in progress:** traffic trends currently remain unknown. Official reports and nearby images supply evidence; snapshots alone do not establish speed, clearance or a faster alternative route. Vehicle counting and validated trend analysis remain planned.
 
@@ -90,8 +90,8 @@ The production output is `web/dist/`, including Cesium's required static assets.
 | `/api/incidents?bbox=west,south,east,north` | Official events, source report times, retrieval time and stale status |
 | `/api/incidents/{id}/history?limit=20` | Latest observed report versions, bounded to 100 per request; 404 for unrecorded IDs, 503 when storage is unavailable |
 | `/api/explore/{category}?bbox=west,south,east,north` | Allowlisted 511 categories: construction, conditions, transit hubs, carpool lots, ferries, service/travel centres, HOV lanes, rest areas, inspection stations, roundabouts and seasonal loads |
-| `/api/cameras?bbox=west,south,east,north` | Official camera metadata and view availability; no upstream image URLs or API keys |
-| `/api/cameras/{id}/views/{view}/snapshot` | Size-limited JPEG/PNG from an allowlisted official image endpoint, retrieved time and limited health evidence |
+| `/api/cameras?bbox=west,south,east,north` | Merged City of Toronto and Ontario 511 camera metadata, per-source health and available views; no upstream image URLs or API keys |
+| `/api/cameras/{id}/views/{view}/snapshot` | Size-limited JPEG/PNG from allowlisted Toronto/511 image endpoints, retrieved time and limited health evidence |
 
 The backend shares one cached events response for 60 seconds and camera metadata for 300 seconds. Failed feed attempts back off for 60 seconds. Catalog requests share a process-local sliding window capped at 8 metadata calls per 60 seconds, leaving headroom under the provider limit. Static places are cached for one hour, construction and road conditions for five minutes, and ferry status for one minute. Requests beyond the cap use stale cache if present or return 503 with Retry-After. Use one API worker while this in-memory cache owns rate limiting; multiple workers/instances need a shared fetcher or cache. Ontario 511 limits developer calls to 10 per 60 seconds.
 
@@ -123,3 +123,11 @@ It uses official public feeds only. Planned counting excludes identifying or tra
 ## Explorer data limits
 
 The catalog uses fixed, allowlisted provider paths. No browser-supplied endpoint or source URL is fetched. Public response fields are explicitly selected, and provider text is rendered as text, never injected HTML. The 511 key stays server-side. Road conditions use the documented v3 endpoint and decoded road-segment geometry. Missing reports or source updates older than six hours are labelled current conditions unknown. Six hours is a conservative product freshness threshold, not a provider guarantee. Rest-area status and facilities are provider metadata, not verified real-time availability. HOV and seasonal-load locations are discovery information; consult the official source for full rules. Transit hubs do not supply departures. Source documentation: https://511on.ca/developers/doc
+
+## Downtown camera viewing
+
+Choose Downtown cameras to zoom into the Toronto core and load the combined camera catalogue. The first six results have lazy snapshot previews; others retain icons to avoid fetching an entire gallery at once. Select a camera for the view selector, nearby alternatives, source resolution and a larger dialog with zoom and fullscreen controls. These are still images, not public live video. Zoom enlarges existing pixels.
+
+Toronto metadata is cached for five minutes with one-minute failure backoff. City-provider listings are grouped within 25 metres, or within 100 metres with matching normalized intersection names; separate upstream image views are preserved. This is conservative location grouping, not a hardware identity guarantee. Incomplete coverage is labelled when one source fails, and working sources remain usable.
+
+Contains information licensed under the Open Government Licence - Toronto: https://open.toronto.ca/open-data-licence/. Camera capture time remains unverified. Only the City IMAGEURL is used; comparison/reference images are not presented as current camera directions.

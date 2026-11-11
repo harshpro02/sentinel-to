@@ -1,5 +1,15 @@
 # Data sources
 
+## November 10, 2026: direct Toronto camera integration
+
+Connected the City ArcGIS camera catalogue alongside Ontario 511. In the downtown box `[-79.42, 43.63, -79.35, 43.68]`, the direct catalogue returned 120 entries versus 29 through 511 at the verification time. These are catalogue records, not guarantees of working cameras. Nearby City-provider listings are grouped conservatively within 25 metres, or within 100 metres when normalized intersection names match; distinct upstream image views are preserved in the view selector. Grouping is a location heuristic, not a verified hardware identity match. Different poles at one intersection can remain separate entries.
+
+The City [traffic camera page](https://www.toronto.ca/services-payments/streets-parking-transportation/traffic-management/pavement-markings/traffic-monitoring-cameras/) describes public still images refreshing every 2 to 3 minutes. No public video endpoint was verified. The [City dataset](https://open.toronto.ca/dataset/traffic-cameras/) links the [Open Government Licence - Toronto](https://open.toronto.ca/open-data-licence/); attribution and a licence link appear in Sentinel. No City logos or endorsement claims were added.
+
+Only the documented current `IMAGEURL` is used from the City catalogue. Reference image fields are not treated as current views. Sample Yonge/Dundas output was PNG at 320 by 240 despite the `.jpg` extension and JPEG HTTP header. Sentinel detects PNG/JPEG signatures instead of trusting filenames or Content-Type. Enlarging preserves the source image and cannot create real detail. Capture time remains unverified.
+
+City metadata has a five-minute cache with one-minute failure backoff and explicit partial-coverage behaviour when either provider fails. Image requests remain bounded, allowlisted, cached and redirect-free; image bytes are not saved to PostgreSQL, disk or S3. City calls do not consume the 511 API-key request budget.
+
 Checked on Nov 6, 2026.
 
 ## Integration update :  November 9, 2026

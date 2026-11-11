@@ -12,6 +12,7 @@ from fastapi import FastAPI, HTTPException, Query, Response
 from api.feeds import Feeds, FeedUnavailable, public_camera
 from api.storage import IncidentStore, connection_settings
 from api.catalog import RESOURCES
+from api.city_cameras import CityCameras, merge_cameras
 
 load_dotenv(Path(__file__).resolve().parents[1] / '.env')
 logging.getLogger('httpx').setLevel(logging.WARNING)
@@ -22,6 +23,7 @@ logging.getLogger('httpcore').setLevel(logging.WARNING)
 async def lifespan(app):
     async with httpx.AsyncClient(timeout=20, headers={'User-Agent': 'Sentinel/0.2'}, follow_redirects=False) as client:
         app.state.feeds = Feeds(client, os.getenv('ONTARIO_511_API_KEY', ''))
+        app.state.city_cameras = CityCameras(client)
         app.state.store = IncidentStore(connection_settings()) if os.getenv('DATABASE_PASSWORD') else None
         app.state.storage_status = 'starting' if app.state.store else 'disabled'
         async def cleanup():
@@ -105,8 +107,25 @@ async def incidents(bbox: str | None = Query(default=None)):
 @app.get('/api/cameras')
 async def cameras(bbox: str | None = Query(default=None)):
     box = bounds(bbox)
-    result = await feed('cameras')
+    result = await camera_catalog()
     return {**result, 'items': [public_camera(item) for item in result['items'] if in_bounds(item, box)]}
+
+
+async def camera_catalog():
+    city, provincial = await asyncio.gather(app.state.city_cameras.get(), app.state.feeds.get('cameras'), return_exceptions=True)
+    available = [result for result in (city, provincial) if isinstance(result, dict)]
+    if not available:
+        raise HTTPException(503, 'Official camera sources are temporarily unavailable.', headers={'Retry-After': '60'})
+    city_items = city['items'] if isinstance(city, dict) else []
+    provincial_items = provincial['items'] if isinstance(provincial, dict) else []
+    partial = len(available) < 2 or any(result['stale'] for result in available)
+    return {
+        'items': merge_cameras(city_items, provincial_items),
+        'fetchedAt': max(result['fetchedAt'] for result in available), 'stale': partial,
+        'message': 'Some camera sources are unavailable or delayed; coverage may be incomplete.' if partial else None,
+        'source': 'City of Toronto + Ontario 511',
+        'sources': [{'name': name, 'available': isinstance(result, dict), 'fetchedAt': result.get('fetchedAt') if isinstance(result, dict) else None, 'stale': result.get('stale', True) if isinstance(result, dict) else True} for name, result in [('City of Toronto', city), ('Ontario 511', provincial)]],
+    }
 
 
 @app.get('/api/explore/{category}')
@@ -138,7 +157,8 @@ async def incident_history(incident_id: str, limit: int = Query(default=20, ge=1
 @app.get('/api/cameras/{camera_id}/views/{view_id}/snapshot')
 async def snapshot(camera_id: str, view_id: str):
     try:
-        image = await app.state.feeds.snapshot(camera_id, view_id)
+        catalog = await camera_catalog() if camera_id.startswith('toronto-camera-') else None
+        image = await app.state.feeds.snapshot(camera_id, view_id, catalog=catalog)
     except FeedUnavailable as error:
         raise HTTPException(503, str(error), headers={'Retry-After': '60'}) from None
     return Response(image['content'], media_type=image['media_type'], headers={

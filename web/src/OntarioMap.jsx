@@ -5,6 +5,7 @@ import { categories } from './categories';
 
 export const regions = {
   gta: { label: 'Greater Toronto Area', coordinates: [-79.55, 43.8], range: 65000, bounds: [-80.3, 43.2, -78.5, 44.5] },
+  downtown: { label: 'Downtown Toronto', coordinates: [-79.385, 43.655], range: 6500, bounds: [-79.42, 43.63, -79.35, 43.68] },
   southern: { label: 'Southern Ontario', coordinates: [-80.5, 44.1], range: 550000, bounds: [-83.2, 41.6, -77.5, 45.8] },
   eastern: { label: 'Eastern Ontario', coordinates: [-76.5, 45.0], range: 320000, bounds: [-78.5, 43.6, -74.2, 46.4] },
   northern: { label: 'Northern Ontario', coordinates: [-85.0, 49.5], range: 1250000, bounds: [-95.2, 45.8, -79.0, 56.9] },

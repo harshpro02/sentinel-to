@@ -36,7 +36,8 @@ def official_image_url(value):
         parsed = urlsplit(value)
     except ValueError:
         return None
-    if parsed.scheme == 'https' and parsed.netloc == '511on.ca' and re.fullmatch(r'/map/Cctv/\d+', parsed.path) and not parsed.query and not parsed.fragment:
+    allowed = parsed.netloc == '511on.ca' and re.fullmatch(r'/map/Cctv/\d+', parsed.path) or parsed.netloc == 'opendata.toronto.ca' and re.fullmatch(r'/transportation/tmc/rescucameraimages/CameraImages/loc\d+\.jpg', parsed.path)
+    if parsed.scheme == 'https' and allowed and not parsed.query and not parsed.fragment:
         return value
     return None
 
@@ -135,12 +136,12 @@ class Feeds:
             age = (datetime.now(timezone.utc) - datetime.fromisoformat(entry['fetchedAt'])).total_seconds()
             return {'items': entry['items'], 'fetchedAt': entry['fetchedAt'], 'stale': bool(entry['error']) or age > interval * 2, 'message': entry['error'], 'source': 'Ontario 511'}
 
-    async def snapshot(self, camera_id, view_id):
+    async def snapshot(self, camera_id, view_id, catalog=None):
         self.purge_images()
-        cameras = await self.get('cameras')
+        cameras = catalog if catalog is not None else await self.get('cameras')
         camera = next((item for item in cameras['items'] if item['id'] == camera_id), None)
         view = next((item for item in camera['views'] if item['id'] == view_id), None) if camera else None
-        if not view or not view['enabled']:
+        if not view or not view['enabled'] or not official_image_url(view.get('_url')):
             raise FeedUnavailable('This official camera view is unavailable.')
         key = (camera_id, view_id)
         async with self.image_lock:
