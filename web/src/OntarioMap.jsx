@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { BoundingSphere, Cartesian2, Cartesian3, Color, CustomDataSource, defined, DistanceDisplayCondition, HeadingPitchRange, ImageryLayer, Ion, LabelStyle, Math as CesiumMath, Matrix4, NearFarScalar, OpenStreetMapImageryProvider, ScreenSpaceEventHandler, ScreenSpaceEventType, Viewer } from 'cesium';
+import { BoundingSphere, Cartesian2, Cartesian3, Color, Credit, CreditDisplay, CustomDataSource, defined, DistanceDisplayCondition, HeadingPitchRange, ImageryLayer, Ion, LabelStyle, Math as CesiumMath, Matrix4, NearFarScalar, OpenStreetMapImageryProvider, ScreenSpaceEventHandler, ScreenSpaceEventType, Viewer } from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
 import { categories } from './categories';
 
@@ -49,7 +49,8 @@ export default function OntarioMap({ items, selected, onSelect, tilted, region, 
     let handler;
     try {
       Ion.defaultAccessToken = '';
-      const imagery = new OpenStreetMapImageryProvider({ url: 'https://tile.openstreetmap.org/', maximumLevel: 19 });
+      CreditDisplay.cesiumCredit = new Credit('');
+      const imagery = new OpenStreetMapImageryProvider({ url: 'https://tile.openstreetmap.org/', maximumLevel: 19, credit: new Credit('&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>', true) });
       imagery.errorEvent.addEventListener(() => setMapError('Some street imagery could not load. You can still browse the incident list.'));
       instance = new Viewer(container.current, {
         baseLayer: new ImageryLayer(imagery, { brightness: 0.94, saturation: 0.55 }),

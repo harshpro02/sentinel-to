@@ -86,7 +86,7 @@ function App() {
     <main className="workspace">
       <OntarioMap items={mapItems} selected={active} onSelect={select} tilted={false} region={region} resetCount={resetCount} />
       <aside className="sidebar explorer" aria-label="Explore Ontario">
-        <div className="explore-heading"><span className="eyebrow">GTA & BEYOND</span><h1>What’s on your way?</h1><p>Cameras, useful stops and road conditions.</p></div>
+        <div className="explore-heading"><span className="eyebrow">GTA & BEYOND</span><h1>What's on your way</h1><p>Cameras, useful stops and road conditions.</p></div>
         <label className="search"><Search size={18} /><input value={query} onChange={(event) => { setQuery(event.target.value); setSelectedId(null); }} placeholder="Cameras, rest areas, Highway 401…" aria-label="Search places, categories and roads" />{query && <button className="clear-search" onClick={() => setQuery('')} aria-label="Clear search">×</button>}</label>
         <label className="region-picker"><MapPin size={14} /><span>Exploring</span><select aria-label="Map region" value={region} onChange={(event) => { setRegion(event.target.value); setSelectedId(null); }}>{Object.entries(regions).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}</select></label>
         {!active && <button className="downtown-shortcut" onClick={() => { chooseCategory('cameras'); setRegion('downtown'); }}><Eye size={19} /><span>Downtown cameras<small>Street-level views around the core</small></span><ArrowRight size={14} /></button>}

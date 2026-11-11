@@ -88,3 +88,7 @@ Added lazy snapshot previews for the first six results, an enlarged dialog, imag
 Validation: 27 backend tests passed, including redirect and URL restrictions, City cache failure handling, partial source coverage and duplicate view preservation. Six frontend tests and a production build passed. Live City Yonge/Dundas image retrieval succeeded as a 320 by 240 PNG. Browser checks exercised the downtown shortcut, search, expanded image, 150 percent zoom, fullscreen entry/exit, Escape and mobile layout with no JavaScript errors or horizontal overflow. No verified video stream was added. The large Cesium bundle remains release work.
 
 Interview question: Why inspect image bytes instead of trusting Content-Type? Model answer: an upstream response can be mislabeled. The City sample had a JPEG filename and header but PNG bytes. Checking the format signature lets the API return the right image media type while rejecting non-image responses.
+
+## November 10: Heading encoding and map branding cleanup
+
+Changed the heading to plain ASCII punctuation to avoid the broken apostrophe shown in the screenshot. Removed the Cesium ion logo through the documented CreditDisplay.cesiumCredit setting, preserving data attribution. Replaced the library's outdated default MapQuest credit with a visible linked OpenStreetMap contributors attribution appropriate to the configured tile source. Verified the heading, absent logo and map credits in the browser without JavaScript errors.
