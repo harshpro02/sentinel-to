@@ -1,5 +1,7 @@
 import asyncio
+import os
 import unittest
+from unittest.mock import patch
 
 import httpx
 from fastapi.testclient import TestClient
@@ -127,7 +129,7 @@ class FeedTests(unittest.IsolatedAsyncioTestCase):
 
 class ApiTests(unittest.TestCase):
     def test_missing_key_returns_503_without_secret_details(self):
-        with TestClient(app) as client:
+        with patch.dict(os.environ, {'ONTARIO_511_API_KEY': '', 'DATABASE_PASSWORD': ''}), TestClient(app) as client:
             app.state.feeds.key = ''
             response = client.get('/api/incidents')
             self.assertEqual(response.status_code, 503)

@@ -20,6 +20,19 @@ if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 
 Set `ONTARIO_511_API_KEY` in `.env`. Preserve an existing `.env` when repeating setup. Never put this key in a `VITE_` variable or frontend code.
 
+For incident history, start Docker Desktop and set two different, randomly generated passwords in `.env`: `POSTGRES_PASSWORD` for database administration and `DATABASE_PASSWORD` for the application. Do not use the placeholder values or share the file. Leave the other database settings at their example defaults for local development.
+
+```powershell
+docker compose up -d --wait db
+.\.venv\Scripts\python.exe -m api.migrate
+```
+
+The database listens on `127.0.0.1:5433`, not the LAN. Migrations run separately using the administrator account; the API uses a restricted application role that cannot create or drop tables. The Docker volume preserves reports across container and API restarts. `docker compose down` stops the database without deleting its volume. Do not add `-v` unless you intend to delete the stored history.
+
+With `DATABASE_PASSWORD` configured, one background collector shares the existing 511 cache and records fresh province-wide events every 60 seconds. It records first/last observations and a version when report content changes. Stale responses are skipped and duplicate batches are ignored. An absent report does not establish clearance. No camera images or user location histories are stored in PostgreSQL.
+
+Without database configuration the existing live feed still works; history returns 503. A database outage does not prevent the live-feed routes from responding. `/api/health` reports storage status separately. Keep one API process while this collector and rate limiter are process-local. Stop the older `fetcher/log_events.py` logger if running so it does not make redundant upstream requests.
+
 Start the backend in one terminal:
 
 ```powershell
@@ -45,8 +58,18 @@ Real feed failures show an error or clearly marked stale results; the running ap
 From the repository root:
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest api.test_feeds -v
+.\.venv\Scripts\python.exe -m unittest discover -s api -t . -v
 ```
+
+To include real PostgreSQL tests with the local database running:
+
+```powershell
+$env:RUN_DATABASE_TESTS = '1'
+.\.venv\Scripts\python.exe -m unittest discover -s api -t . -v
+Remove-Item Env:RUN_DATABASE_TESTS
+```
+
+These integration tests create and delete a separate randomly named test database. They verify idempotent migrations, persistence, duplicate/stale handling, SQL injection inputs and runtime permissions. CI runs them against PostgreSQL too.
 
 From `web/`:
 
@@ -63,6 +86,7 @@ The production output is `web/dist/`, including Cesium's required static assets.
 | --- | --- |
 | `/api/health` | App health and whether a feed key is configured; never returns the key |
 | `/api/incidents?bbox=west,south,east,north` | Official events, source report times, retrieval time and stale status |
+| `/api/incidents/{id}/history?limit=20` | Latest observed report versions, bounded to 100 per request; 404 for unrecorded IDs, 503 when storage is unavailable |
 | `/api/cameras?bbox=west,south,east,north` | Official camera metadata and view availability; no upstream image URLs or API keys |
 | `/api/cameras/{id}/views/{view}/snapshot` | Size-limited JPEG/PNG from an allowlisted official image endpoint, retrieved time and limited health evidence |
 
@@ -79,6 +103,8 @@ The street map uses OpenStreetMap imagery with attribution visible in the viewer
 Ontario 511 data is provided as available and may differ from actual road conditions. Source attribution links to [Ontario 511](https://511on.ca/). See its [Developer Access Agreement](https://511on.ca/developers/resources) and [Open Government Licence - Ontario](https://www.ontario.ca/page/open-government-licence-ontario). Publicly accessible source images remain subject to their provider's applicable terms; Sentinel does not claim endorsement or control of camera availability. No verified video stream is integrated.
 
 ## Planned AWS deployment
+
+The local Compose file currently starts PostgreSQL only. The API and frontend still run on the host. AWS, HTTPS, backups, public request limits and full production container serving remain release work. Supply only runtime credentials to the deployed API, keep the administrator credentials for migration jobs, and never expose the database port publicly. HTTP client request logs are disabled at INFO/DEBUG levels because upstream URLs contain the feed key. Do not enable verbose HTTP tracing with real credentials.
 
 ```text
 Official feeds → Python fetcher → PostgreSQL + S3 images (24-hour retention)

@@ -1,32 +1,56 @@
 import asyncio
+import logging
 import os
 from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
 import httpx
+import psycopg
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, Response
 
 from api.feeds import Feeds, FeedUnavailable, public_camera
+from api.storage import IncidentStore, connection_settings
 
 load_dotenv(Path(__file__).resolve().parents[1] / '.env')
+logging.getLogger('httpx').setLevel(logging.WARNING)
+logging.getLogger('httpcore').setLevel(logging.WARNING)
 
 
 @asynccontextmanager
 async def lifespan(app):
     async with httpx.AsyncClient(timeout=20, headers={'User-Agent': 'Sentinel/0.2'}, follow_redirects=False) as client:
         app.state.feeds = Feeds(client, os.getenv('ONTARIO_511_API_KEY', ''))
+        app.state.store = IncidentStore(connection_settings()) if os.getenv('DATABASE_PASSWORD') else None
+        app.state.storage_status = 'starting' if app.state.store else 'disabled'
         async def cleanup():
             while True:
                 await asyncio.sleep(60)
                 app.state.feeds.purge_images()
         task = asyncio.create_task(cleanup())
+        async def collect():
+            while True:
+                try:
+                    batch = await app.state.feeds.get('event')
+                    await app.state.store.record(batch)
+                    app.state.storage_status = 'stale' if batch['stale'] else 'ok'
+                except FeedUnavailable:
+                    app.state.storage_status = 'feed unavailable'
+                except psycopg.Error:
+                    app.state.storage_status = 'unavailable'
+                    logging.getLogger('sentinel').warning('Incident storage unavailable; retrying without connection details.')
+                await asyncio.sleep(60)
+        collector = asyncio.create_task(collect()) if app.state.store else None
         try:
             yield
         finally:
             task.cancel()
             with suppress(asyncio.CancelledError):
                 await task
+            if collector:
+                collector.cancel()
+                with suppress(asyncio.CancelledError):
+                    await collector
 
 
 app = FastAPI(title='Sentinel API', lifespan=lifespan)
@@ -34,7 +58,16 @@ app = FastAPI(title='Sentinel API', lifespan=lifespan)
 
 @app.get('/api/health')
 async def health():
-    return {'status': 'ok', 'feedConfigured': bool(os.getenv('ONTARIO_511_API_KEY'))}
+    return {'status': 'ok', 'feedConfigured': bool(os.getenv('ONTARIO_511_API_KEY')), 'storage': app.state.storage_status}
+
+
+@app.middleware('http')
+async def security_headers(request, call_next):
+    response = await call_next(request)
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Referrer-Policy'] = 'no-referrer'
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
 def in_bounds(item, bbox):
@@ -73,6 +106,19 @@ async def cameras(bbox: str | None = Query(default=None)):
     box = bounds(bbox)
     result = await feed('cameras')
     return {**result, 'items': [public_camera(item) for item in result['items'] if in_bounds(item, box)]}
+
+
+@app.get('/api/incidents/{incident_id}/history')
+async def incident_history(incident_id: str, limit: int = Query(default=20, ge=1, le=100)):
+    if not app.state.store:
+        raise HTTPException(503, 'Incident history is not configured.')
+    try:
+        result = await app.state.store.history(incident_id, limit)
+    except psycopg.Error:
+        raise HTTPException(503, 'Incident history is temporarily unavailable.') from None
+    if result is None:
+        raise HTTPException(404, 'No recorded history for this report.')
+    return result
 
 
 @app.get('/api/cameras/{camera_id}/views/{view_id}/snapshot')

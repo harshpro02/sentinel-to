@@ -49,3 +49,14 @@ Model answer: Cache the full upstream response on the server and share one in-fl
 Inspected Isometric Toronto's public page, reference image, credits and method. Its illustrated image tiles use a deep-zoom presentation, rather than merely tilting Sentinel's existing street map. Recorded the visual direction and a small-area prototype boundary; no new illustrated renderer or third-party tile layer has been added to the app.
 
 Read the relevant local Claude memory and chat records. Preserve short explanations, interview ownership and no em dashes in public writing. Career/resume research stays outside the public project. The desired recent resume redesign was not found in the available local transcripts, so clarification is pending instead of inventing a prior decision.
+# November 10, 2026: PostgreSQL incident history
+
+Built local PostgreSQL storage with versioned SQL migrations and a dedicated runtime role. A background collector shares the 511 cache, stores first/last observations, and saves changed report versions atomically. Added a bounded history endpoint, generic database errors, API response headers, and suppressed HTTP client request logs to avoid logging upstream query credentials.
+
+Concepts: persistence survives process restarts; a transaction commits a whole batch or rolls it back; parameterized SQL sends data separately from SQL instructions; least privilege gives the running app only the permissions it needs. No source-code comments were added.
+
+Validation: 17 backend tests passed, including real isolated PostgreSQL tests for repeat migrations, stale/duplicate handling, history persistence, SQL injection inputs and denied schema changes. Four frontend tests and the production build passed. Local smoke check recorded 462 official reports and served history through Vite. Current configured secrets were not found in tracked files, Git patches or frontend output. This scan does not establish that all possible vulnerabilities are absent. Frontend still has the existing large Cesium bundle warning.
+
+Limitations: observed report changes do not prove road clearance; no historical data before collection began; history UI, AWS, HTTPS, public request limits and backup/recovery automation remain to implement. Local container data lives in a persistent Docker volume, not Git. AWS resources were not provisioned.
+
+Interview question: Why use different database accounts for migrations and the API? Model answer: migrations need permission to change the schema, while normal requests only need to read and write report data. Restricting the runtime account limits damage if a request path is compromised.
