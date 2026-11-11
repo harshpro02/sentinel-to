@@ -3,7 +3,7 @@ import hashlib
 import math
 import re
 import time
-from collections import OrderedDict
+from collections import OrderedDict, deque
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
@@ -89,9 +89,11 @@ class FeedUnavailable(Exception):
 
 class Feeds:
     def __init__(self, client, key, clock=time.monotonic):
+        from api.catalog import RESOURCES
         self.client, self.key, self.clock = client, key, clock
         self.cache = {}
-        self.locks = {'event': asyncio.Lock(), 'cameras': asyncio.Lock()}
+        self.locks = {name: asyncio.Lock() for name in ['event', 'cameras', *RESOURCES]}
+        self.request_times = deque()
         self.images = OrderedDict()
         self.image_lock = asyncio.Lock()
 
@@ -101,20 +103,29 @@ class Feeds:
                 self.images.pop(key, None)
 
     async def get(self, name):
+        from api.catalog import RESOURCES, normalize_resource
+        if name not in self.locks:
+            raise FeedUnavailable('Unknown Ontario 511 resource.')
+        endpoint, _, interval, version = RESOURCES.get(name, (name, '', 60 if name == 'event' else 300, 2))
         async with self.locks[name]:
             entry = self.cache.setdefault(name, {'items': [], 'fetchedAt': None, 'attempt': None, 'error': None})
-            ttl = 60 if name == 'event' or entry['error'] else 300
+            ttl = 60 if entry['error'] else interval
             if entry['attempt'] is None or self.clock() - entry['attempt'] >= ttl:
                 entry['attempt'] = self.clock()
                 try:
                     if not self.key:
                         raise FeedUnavailable()
-                    response = await self.client.get(f'https://511on.ca/api/v2/get/{name}', params={'key': self.key, 'format': 'json'})
+                    while self.request_times and self.clock() - self.request_times[0] >= 60:
+                        self.request_times.popleft()
+                    if len(self.request_times) >= 8:
+                        raise FeedUnavailable()
+                    self.request_times.append(self.clock())
+                    response = await self.client.get(f'https://511on.ca/api/v{version}/get/{endpoint}', params={'key': self.key, 'format': 'json'})
                     response.raise_for_status()
                     rows = response.json()
                     if not isinstance(rows, list) or any(not isinstance(row, dict) for row in rows):
                         raise ValueError()
-                    entry['items'] = normalize_events(rows) if name == 'event' else normalize_cameras(rows)
+                    entry['items'] = normalize_events(rows) if name == 'event' else normalize_cameras(rows) if name == 'cameras' else normalize_resource(name, rows)
                     entry['fetchedAt'] = utc_now()
                     entry['error'] = None
                 except (httpx.HTTPError, ValueError, TypeError, FeedUnavailable):
@@ -122,7 +133,7 @@ class Feeds:
             if not entry['fetchedAt']:
                 raise FeedUnavailable('Ontario 511 is unavailable. Check the server configuration and try again shortly.')
             age = (datetime.now(timezone.utc) - datetime.fromisoformat(entry['fetchedAt'])).total_seconds()
-            return {'items': entry['items'], 'fetchedAt': entry['fetchedAt'], 'stale': bool(entry['error']) or age > (120 if name == 'event' else 600), 'message': entry['error'], 'source': 'Ontario 511'}
+            return {'items': entry['items'], 'fetchedAt': entry['fetchedAt'], 'stale': bool(entry['error']) or age > interval * 2, 'message': entry['error'], 'source': 'Ontario 511'}
 
     async def snapshot(self, camera_id, view_id):
         self.purge_images()

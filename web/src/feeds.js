@@ -6,6 +6,10 @@ export function useFeed(path) {
     let disposed = false;
     let timer;
     let controller;
+    if (!path) {
+      setState({ items: [], loading: false, stale: false, fetchedAt: null, error: null });
+      return;
+    }
     setState({ items: [], loading: true, stale: false, fetchedAt: null, error: null });
     async function refresh() {
       controller = new AbortController();
@@ -17,7 +21,7 @@ export function useFeed(path) {
         if (!Array.isArray(data.items)) throw new Error('Invalid feed');
         if (!disposed) setState({ ...data, loading: false, error: data.message ?? null });
       } catch {
-        if (!disposed) setState((previous) => ({ ...previous, loading: false, stale: true, error: 'Could not refresh Ontario 511. Previous reports may no longer reflect current conditions.' }));
+        if (!disposed) setState((previous) => ({ ...previous, loading: false, stale: true, error: 'This category could not be refreshed. Displayed information may be out of date; retrying shortly.' }));
       } finally {
         clearTimeout(timeout);
         if (!disposed) timer = setTimeout(refresh, 60000);

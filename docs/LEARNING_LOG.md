@@ -68,3 +68,13 @@ Reduced the header and sidebar footprint, centered the map in the remaining desk
 Concept: clustering groups nearby screen positions at the current zoom, not administrative areas or incident severity. Counts change as users zoom or toggle layers. The list remains available for individual report selection.
 
 Validation: inspected the desktop screenshot; browser checks exercised a cluster-area click, report selection, back navigation, GTA reset and a 390-pixel mobile viewport without JavaScript errors or horizontal overflow. Four existing frontend tests and the production build passed. The existing Cesium bundle-size warning remains. Illustrated isometric rendering is still a separate prototype.
+
+## November 10: Explore categories instead of a report wall
+
+Replaced report/camera tabs with a category explorer. Six common choices appear first; All categories reveals all 15 from the user's reference. Category-name search leads into on-demand feeds, and loaded results can be searched by location, road or amenities. Cards lead with the official impact or place name and a clear action. Numbered clusters were replaced by category icons with descriptive hover labels. Nearby groups zoom in when clicked.
+
+Connected 13 additional allowlisted 511 feeds, including construction projects, v3 road conditions, transit hubs, rest areas, service centres, carpool lots, ferries and commercial travel facilities. Shared a sliding-window metadata request budget across feeds and used longer caches for static places. Road-condition polylines are decoded into map segments; source updates older than six hours or No Report are explicitly unknown. Found old source updates during live verification and added the warning rather than treating successful retrieval as current evidence.
+
+Validation: 21 backend tests passed, including normalization, geometry decoding, source freshness, rate limits, SQL injection inputs and real PostgreSQL persistence. Six frontend tests passed. Live smoke checks returned records from all 13 added feeds. GTA examples included 31 transit hubs, 12 rest-area records, 6 service centres and 69 condition segments. Browser checks verified category search, all 15 options, rest-area details, back navigation and mobile width without JavaScript errors or horizontal overflow. External map imagery can take time to sharpen; the existing Cesium bundle-size warning remains.
+
+Concepts: on-demand fetching avoids downloading every layer at once; one shared request budget protects provider access; retrieval freshness and the age of a source observation are separate. Neither a facility listing nor a provider status proves real-time availability. No verified live video or full transit schedules were added.

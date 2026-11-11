@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { BoundingSphere, Cartesian2, Cartesian3, Color, CustomDataSource, defined, DistanceDisplayCondition, HeadingPitchRange, ImageryLayer, Ion, LabelStyle, Math as CesiumMath, Matrix4, NearFarScalar, OpenStreetMapImageryProvider, ScreenSpaceEventHandler, ScreenSpaceEventType, Viewer } from 'cesium';
 import 'cesium/Build/Cesium/Widgets/widgets.css';
+import { categories } from './categories';
 
 export const regions = {
   gta: { label: 'Greater Toronto Area', coordinates: [-79.55, 43.8], range: 65000, bounds: [-80.3, 43.2, -78.5, 44.5] },
@@ -11,6 +12,24 @@ export const regions = {
 };
 
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const markerImages = new Map();
+const markerPaths = {
+  camera: '<rect x="8" y="11" width="16" height="11" rx="2"/><circle cx="16" cy="16.5" r="3"/>',
+  incident: '<path d="M16 8 25 24H7Z"/><path d="M16 13v5m0 3v.2"/>',
+  construction: '<path d="M8 12h16v9H8Zm3 0 7 9m0-9 6 8M10 21v4m12-4v4"/>',
+  'transit-hubs': '<rect x="9" y="8" width="14" height="16" rx="3"/><path d="M9 16h14m-11 5h1m6 0h1m-9 3-2 3m12-3 2 3"/>',
+  'rest-areas': '<path d="M9 12h12v8a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4Zm12 0h2a3 3 0 0 1 0 6h-2M12 7v2m5-2v2"/>',
+  'service-centres': '<path d="M9 25V9h11v16M9 15h11m0-5 4 4v8a2 2 0 0 0 4 0v-5l-3-3M7 25h15"/>',
+};
+function markerImage(kind, active = false) {
+  const key = `${kind}-${active}`;
+  if (!markerImages.has(key)) {
+    const color = active ? '#a9e8d0' : kind === 'incident' ? '#f2a28f' : kind === 'construction' ? '#e5c188' : '#b0d9d0';
+    const path = markerPaths[kind] ?? '<circle cx="16" cy="15" r="6"/><path d="m12 20 4 6 4-6"/>';
+    markerImages.set(key, `data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="34" height="38" viewBox="0 0 32 36"><path d="M16 35 11 29H7a6 6 0 0 1-6-6V7a6 6 0 0 1 6-6h18a6 6 0 0 1 6 6v16a6 6 0 0 1-6 6h-4Z" fill="#152b35" stroke="${color}" stroke-width="1.5"/><g fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${path}</g></svg>`)}`);
+  }
+  return markerImages.get(key);
+}
 
 export default function OntarioMap({ items, selected, onSelect, tilted, region, resetCount }) {
   const container = useRef(null);
@@ -20,6 +39,7 @@ export default function OntarioMap({ items, selected, onSelect, tilted, region, 
   const itemsRef = useRef(items);
   const [ready, setReady] = useState(false);
   const [mapError, setMapError] = useState('');
+  const [hovered, setHovered] = useState(null);
   selectRef.current = onSelect;
   itemsRef.current = items;
 
@@ -42,14 +62,17 @@ export default function OntarioMap({ items, selected, onSelect, tilted, region, 
       markers.current = source;
       instance.dataSources.add(source);
       source.clustering.enabled = true;
-      source.clustering.pixelRange = 42;
+      source.clustering.pixelRange = 55;
       source.clustering.minimumClusterSize = 3;
       source.clustering.clusterEvent.addEventListener((entities, cluster) => {
-        cluster.billboard.show = false;
+        cluster.billboard.show = true;
         cluster.point.show = false;
-        cluster.label.show = true;
-        cluster.label.text = String(entities.length);
-        cluster.label.font = '600 13px sans-serif';
+        cluster.label.show = false;
+        const kinds = entities.map((entity) => entity.properties.kind.getValue());
+        const kind = kinds.includes('incident') ? 'incident' : kinds[0];
+        const caption = kind === 'incident' ? 'Road reports' : kind === 'camera' ? 'Cameras' : kind === 'construction' ? 'Roadwork' : categories.find((entry) => entry.id === kind)?.label ?? 'Places';
+        cluster.label.text = `${caption} nearby`;
+        cluster.label.font = '500 11px sans-serif';
         cluster.label.fillColor = Color.WHITE;
         cluster.label.outlineWidth = 0;
         cluster.label.showBackground = true;
@@ -58,6 +81,11 @@ export default function OntarioMap({ items, selected, onSelect, tilted, region, 
         cluster.label.pixelOffset = Cartesian2.ZERO;
         cluster.label.disableDepthTestDistance = Infinity;
         cluster.label.id = { clusterMembers: entities.map((entity) => entity.position.getValue(instance.clock.currentTime)) };
+        cluster.billboard.image = markerImage(kind);
+        cluster.billboard.width = 34;
+        cluster.billboard.height = 38;
+        cluster.billboard.id = { ...cluster.label.id, caption: `Explore nearby ${caption.toLowerCase()}` };
+        cluster.billboard.disableDepthTestDistance = Infinity;
       });
       instance.scene.backgroundColor = Color.fromCssColorString('#0a1016');
       instance.scene.globe.baseColor = Color.fromCssColorString('#172530');
@@ -76,9 +104,18 @@ export default function OntarioMap({ items, selected, onSelect, tilted, region, 
           instance.camera.flyToBoundingSphere(sphere, { offset: new HeadingPitchRange(0, -Math.PI / 2, Math.max(sphere.radius * 4, 2500)), duration: reducedMotion() ? 0 : 0.6 });
           return;
         }
-        const item = itemsRef.current.find((candidate) => candidate.id === picked.id.id);
+        const item = itemsRef.current.find((candidate) => candidate.id === (picked.id.properties?.itemId?.getValue() ?? picked.id.id));
         if (item) selectRef.current(item);
       }, ScreenSpaceEventType.LEFT_CLICK);
+      handler.setInputAction((movement) => {
+        const picked = instance.scene.pick(movement.endPosition);
+        instance.scene.canvas.style.cursor = defined(picked?.id) ? 'pointer' : '';
+        const item = itemsRef.current.find((candidate) => candidate.id === (picked?.id?.properties?.itemId?.getValue() ?? picked?.id?.id));
+        const caption = picked?.id?.caption ?? (item ? `${item.road} · ${item.type === 'camera' ? 'See snapshot' : item.title}` : null);
+        const bounds = instance.scene.canvas.getBoundingClientRect();
+        setHovered(caption ? { caption, x: Math.min(bounds.left + movement.endPosition.x + 14, window.innerWidth - 270), y: Math.max(12, bounds.top + movement.endPosition.y - 50) } : null);
+      }, ScreenSpaceEventType.MOUSE_MOVE);
+      instance.scene.canvas.addEventListener('mouseleave', () => setHovered(null));
       instance.scene.renderError.addEventListener(() => setMapError('The map encountered a rendering error. You can still browse the incident list.'));
       setReady(true);
     } catch {
@@ -100,9 +137,16 @@ export default function OntarioMap({ items, selected, onSelect, tilted, region, 
       const active = selected?.id === item.id;
       (active ? instance.entities : markers.current.entities).add({
         id: item.id,
+        properties: { kind: item.type },
         position: Cartesian3.fromDegrees(...item.coordinates, 12),
-        point: { pixelSize: active ? 16 : 9, color: Color.fromCssColorString(active ? '#a9e8d0' : item.type === 'camera' ? '#93badb' : item.severity === 'high' ? '#f09081' : '#dfb573'), outlineColor: Color.WHITE, outlineWidth: 2, disableDepthTestDistance: Infinity },
+        billboard: { image: markerImage(item.type, active), width: active ? 40 : 30, height: active ? 44 : 34, disableDepthTestDistance: Infinity },
         label: { show: active, text: item.road.toUpperCase(), distanceDisplayCondition: new DistanceDisplayCondition(0, active ? Number.MAX_VALUE : 60000), font: '11px monospace', fillColor: Color.fromCssColorString('#e7edf2'), style: LabelStyle.FILL_AND_OUTLINE, outlineColor: Color.fromCssColorString('#0a1016'), outlineWidth: 4, pixelOffset: new Cartesian2(0, -24), scaleByDistance: new NearFarScalar(250000, 1, 1800000, 0.6), disableDepthTestDistance: Infinity },
+      });
+      (item.segments ?? []).forEach((segment, index) => {
+        if (segment.length > 1) instance.entities.add({
+          id: `${item.id}-segment-${index}`, properties: { itemId: item.id },
+          polyline: { positions: Cartesian3.fromDegreesArray(segment.flat()), width: active ? 6 : 3, material: Color.fromCssColorString(active ? '#0e8278' : '#527e9c').withAlpha(0.8) },
+        });
       });
     });
     instance.scene.requestRender();
@@ -121,5 +165,6 @@ export default function OntarioMap({ items, selected, onSelect, tilted, region, 
     <div ref={container} className="map" role="region" aria-label="Interactive Ontario road map; incident markers have matching accessible list buttons" />
     {mapError && <div className="map-error" role="status">{mapError}</div>}
     {!ready && !mapError && <div className="map-loading" role="status">Loading Ontario map…</div>}
+    {hovered && <div className="map-hover" style={{ left: hovered.x, top: hovered.y }}>{hovered.caption}</div>}
   </>;
 }

@@ -11,6 +11,7 @@ from fastapi import FastAPI, HTTPException, Query, Response
 
 from api.feeds import Feeds, FeedUnavailable, public_camera
 from api.storage import IncidentStore, connection_settings
+from api.catalog import RESOURCES
 
 load_dotenv(Path(__file__).resolve().parents[1] / '.env')
 logging.getLogger('httpx').setLevel(logging.WARNING)
@@ -106,6 +107,19 @@ async def cameras(bbox: str | None = Query(default=None)):
     box = bounds(bbox)
     result = await feed('cameras')
     return {**result, 'items': [public_camera(item) for item in result['items'] if in_bounds(item, box)]}
+
+
+@app.get('/api/explore/{category}')
+async def explore(category: str, bbox: str | None = Query(default=None)):
+    if category not in RESOURCES:
+        raise HTTPException(404, 'Unknown explore category.')
+    box = bounds(bbox)
+    result = await feed(category)
+    def visible(item):
+        if item.get('segments'):
+            return box is None or any(box[0] <= point[0] <= box[2] and box[1] <= point[1] <= box[3] for segment in item['segments'] for point in segment)
+        return in_bounds(item, box)
+    return {**result, 'items': [item for item in result['items'] if visible(item)]}
 
 
 @app.get('/api/incidents/{incident_id}/history')

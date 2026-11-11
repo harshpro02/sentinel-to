@@ -49,9 +49,9 @@ npm run dev -- --port 5173 --strictPort
 
 Open http://127.0.0.1:5173. Keep the server running to see frontend changes automatically.
 
-The Vite development server proxies `/api` to FastAPI on port 8000. Search matches road names, report details and camera providers. The region selector changes the feed query bounds as well as the map view. Road reports and cameras have separate lists; the Cameras list enables camera markers. An incident lists up to four cameras within 5 km, without claiming they face the incident's direction.
+The Vite development server proxies `/api` to FastAPI on port 8000. Search matches road names, report details and camera providers. The region selector changes the feed query bounds as well as the map view. The explorer starts with six common categories; All categories reveals the full set of 15. Selecting a category loads that official feed. Search matches category names and the currently loaded results, including place amenities. It does not fetch every category at once or provide address geocoding. An incident lists up to four cameras within 5 km, without claiming they face the incident's direction.
 
-Nearby map markers are grouped into numbered clusters to reduce overlap. Numbers count visible-layer reports/cameras, not severity or traffic volume. Click a group to zoom in; the accessible list retains the individual reports. The selected report stays separate from clusters.
+Map markers use category icons. Nearby markers are grouped without number badges; hover reveals a description, and clicking a group zooms in. The accessible list retains individual results. Selected records remain separate from groups. Cards lead with official impact or place information and use explicit actions such as See road snapshot.
 
 Real feed failures show an error or clearly marked stale results; the running app never silently substitutes demo incidents. The old `demo.js` data remains solely for the existing filtering tests and is not imported by the live application.
 
@@ -89,10 +89,11 @@ The production output is `web/dist/`, including Cesium's required static assets.
 | `/api/health` | App health and whether a feed key is configured; never returns the key |
 | `/api/incidents?bbox=west,south,east,north` | Official events, source report times, retrieval time and stale status |
 | `/api/incidents/{id}/history?limit=20` | Latest observed report versions, bounded to 100 per request; 404 for unrecorded IDs, 503 when storage is unavailable |
+| `/api/explore/{category}?bbox=west,south,east,north` | Allowlisted 511 categories: construction, conditions, transit hubs, carpool lots, ferries, service/travel centres, HOV lanes, rest areas, inspection stations, roundabouts and seasonal loads |
 | `/api/cameras?bbox=west,south,east,north` | Official camera metadata and view availability; no upstream image URLs or API keys |
 | `/api/cameras/{id}/views/{view}/snapshot` | Size-limited JPEG/PNG from an allowlisted official image endpoint, retrieved time and limited health evidence |
 
-The backend shares one cached events response for 60 seconds and camera metadata for 300 seconds. Failed feed attempts back off for 60 seconds. Use one API worker while this in-memory cache owns rate limiting; multiple workers/instances need a shared fetcher or cache. Ontario 511 limits developer calls to 10 per 60 seconds.
+The backend shares one cached events response for 60 seconds and camera metadata for 300 seconds. Failed feed attempts back off for 60 seconds. Catalog requests share a process-local sliding window capped at 8 metadata calls per 60 seconds, leaving headroom under the provider limit. Static places are cached for one hour, construction and road conditions for five minutes, and ferry status for one minute. Requests beyond the cap use stale cache if present or return 503 with Retry-After. Use one API worker while this in-memory cache owns rate limiting; multiple workers/instances need a shared fetcher or cache. Ontario 511 limits developer calls to 10 per 60 seconds.
 
 Camera images are requested only when a view is selected or manually refreshed. The backend caches a successful view for 60 seconds, caps the cache at 64 images, and purges idle image bytes after 15 minutes with a cleanup loop running every minute. Images are not saved to disk or S3 by this implementation. Browser object URLs are revoked when the view changes.
 
@@ -118,3 +119,7 @@ Docker Compose on EC2; S3 access through an EC2 IAM role
 See [delivery plan](docs/DELIVERY_PLAN.md) and [learning log](docs/LEARNING_LOG.md).
 
 It uses official public feeds only. Planned counting excludes identifying or tracking people and vehicles. It is a public awareness tool, not an emergency service, and should be used before travelling.
+
+## Explorer data limits
+
+The catalog uses fixed, allowlisted provider paths. No browser-supplied endpoint or source URL is fetched. Public response fields are explicitly selected, and provider text is rendered as text, never injected HTML. The 511 key stays server-side. Road conditions use the documented v3 endpoint and decoded road-segment geometry. Missing reports or source updates older than six hours are labelled current conditions unknown. Six hours is a conservative product freshness threshold, not a provider guarantee. Rest-area status and facilities are provider metadata, not verified real-time availability. HOV and seasonal-load locations are discovery information; consult the official source for full rules. Transit hubs do not supply departures. Source documentation: https://511on.ca/developers/doc
