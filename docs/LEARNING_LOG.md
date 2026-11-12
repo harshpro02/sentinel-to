@@ -100,3 +100,13 @@ Jarvis/Carlton returned a valid image during diagnosis, so the screenshot did no
 The error panel now explains the retrieval failure, offers a clearly labelled nearby camera and a short retry countdown. It hides the unusable enlarge button and absent retrieval timestamp. Successful refreshes retain the normal 60-second interval; failed images remain unknown, with no invented replacement footage.
 
 Validation: 29 backend tests passed, including failure/backoff recovery and a blocked camera alongside a successful concurrent view. Browser testing simulated an unavailable Jarvis/Carlton snapshot, verified the nearby action and absence of dead controls, then retried successfully without JavaScript errors. The production build passed. Source-side outages and camera quality remain outside Sentinel's control.
+
+## November 12: Search keyboard shortcut
+
+Restarted local frontend, API and PostgreSQL. Added Ctrl+K / Command+K to focus explorer search, a small desktop keyboard hint and focus restoration after clearing the query. Open camera dialogs retain their keyboard interaction. No source comments were added.
+
+Concepts: a keyboard event handler checks modifier keys and the pressed key; preventDefault avoids the browser shortcut; a React ref points to the existing input so focus can change without changing query state. The effect removes its listener during cleanup.
+
+Validation: six frontend tests and the production build passed. Browser checks confirmed shortcut focus, clear-button focus restoration and a hidden shortcut hint on mobile, with no JavaScript errors. Local app health reported storage ok. The existing Cesium bundle-size warning remains.
+
+Interview question: Why use a ref for input focus? Model answer: a ref provides access to the existing DOM input so the event handler can call focus. Query text remains React state because changes to it affect the displayed results.

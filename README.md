@@ -53,6 +53,8 @@ The Vite development server proxies `/api` to FastAPI on port 8000. Search match
 
 Map markers use category icons. Nearby markers are grouped without number badges; hover reveals a description, and clicking a group zooms in. The accessible list retains individual results. Selected records remain separate from groups. Cards lead with official impact or place information and use explicit actions such as See road snapshot.
 
+Press Ctrl+K (or Command+K) to focus the explorer search. Clearing a search keeps focus in the input. The shortcut does not interrupt an open camera dialog.
+
 Real feed failures show an error or clearly marked stale results; the running app never silently substitutes demo incidents. The old `demo.js` data remains solely for the existing filtering tests and is not imported by the live application.
 
 ## Checks

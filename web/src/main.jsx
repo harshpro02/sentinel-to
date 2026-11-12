@@ -36,6 +36,7 @@ function App() {
   const [resetCount, setResetCount] = useState(0);
   const [limit, setLimit] = useState(20);
   const detailsHeading = useRef(null);
+  const searchInput = useRef(null);
   const previousCard = useRef(null);
   const box = regions[region].bounds.join(',');
   const events = useFeed(`/api/incidents?bbox=${box}`);
@@ -71,9 +72,15 @@ function App() {
   }
   useEffect(() => { if (active) detailsHeading.current?.focus(); }, [active?.id]);
   useEffect(() => {
-    const escape = (event) => { if (event.key === 'Escape' && !document.querySelector('dialog[open]')) close(); };
-    window.addEventListener('keydown', escape);
-    return () => window.removeEventListener('keydown', escape);
+    const handleKeyDown = (event) => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k' && !document.querySelector('dialog[open]')) {
+        event.preventDefault();
+        searchInput.current?.focus();
+      }
+      if (event.key === 'Escape' && !document.querySelector('dialog[open]')) close();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
   useEffect(() => { setLimit(20); }, [query, region]);
   const featured = results.filter((item) => !scheduled(item)).slice(0, 4);
@@ -87,7 +94,7 @@ function App() {
       <OntarioMap items={mapItems} selected={active} onSelect={select} tilted={false} region={region} resetCount={resetCount} />
       <aside className="sidebar explorer" aria-label="Explore Ontario">
         <div className="explore-heading"><span className="eyebrow">GTA & BEYOND</span><h1>What's on your way</h1><p>Cameras, useful stops and road conditions.</p></div>
-        <label className="search"><Search size={18} /><input value={query} onChange={(event) => { setQuery(event.target.value); setSelectedId(null); }} placeholder="Cameras, rest areas, Highway 401…" aria-label="Search places, categories and roads" />{query && <button className="clear-search" onClick={() => setQuery('')} aria-label="Clear search">×</button>}</label>
+        <label className="search"><Search size={18} /><input ref={searchInput} aria-keyshortcuts="Control+K Meta+K" value={query} onChange={(event) => { setQuery(event.target.value); setSelectedId(null); }} placeholder="Cameras, rest areas, Highway 401…" aria-label="Search places, categories and roads" /><kbd className="search-shortcut" aria-hidden="true">Ctrl K</kbd>{query && <button className="clear-search" onClick={() => { setQuery(''); searchInput.current?.focus(); }} aria-label="Clear search">×</button>}</label>
         <label className="region-picker"><MapPin size={14} /><span>Exploring</span><select aria-label="Map region" value={region} onChange={(event) => { setRegion(event.target.value); setSelectedId(null); }}>{Object.entries(regions).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}</select></label>
         {!active && <button className="downtown-shortcut" onClick={() => { chooseCategory('cameras'); setRegion('downtown'); }}><Eye size={19} /><span>Downtown cameras<small>Street-level views around the core</small></span><ArrowRight size={14} /></button>}
         {!active && <><div className="browse-heading"><span>{query ? 'Matching categories' : 'What are you looking for?'}</span><button aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? 'Less' : 'All categories'}<ChevronDown size={12} /></button></div><div className="category-grid">{visibleCategories.map((entry) => { const Icon = icons[entry.icon]; return <button key={entry.id} className={category === entry.id ? 'category-button chosen' : 'category-button'} aria-pressed={category === entry.id} title={entry.hint} onClick={() => chooseCategory(entry.id)}><Icon size={18} /><span>{entry.label}</span></button>; })}</div>{category !== 'explore' && <button className="back-button explore-back" onClick={() => chooseCategory('explore')}><ArrowLeft size={13} /> Back to explore</button>}</>}
