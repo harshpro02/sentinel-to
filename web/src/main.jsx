@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { ArrowLeft, ArrowRight, ArrowUpRight, BusFront, ChevronDown, CloudSnow, Coffee, Construction, Eye, Fuel, Info, MapPin, ParkingCircle, Route, Search, Ship, TriangleAlert, Truck } from 'lucide-react';
 import OntarioMap, { regions } from './OntarioMap';
 import CameraViewer from './CameraViewer';
+import IncidentHistory from './IncidentHistory';
 import { distanceKm, formatTime, useFeed } from './feeds';
 import { categories, categoryMatches, itemMatches } from './categories';
 import './styles.css';
@@ -106,6 +107,7 @@ function App() {
             {active.type === 'camera' ? <CameraViewer key={active.id} camera={active} stale={cameras.stale} nearby={nearby} onSelectCamera={openCamera} /> : <>
               <div className="detail-impact"><span>{active.type === 'incident' || active.type === 'construction' ? 'OFFICIAL REPORTED IMPACT' : 'PROVIDER INFORMATION'}</span><strong>{active.title}</strong></div>{scheduled(active) && <p className="camera-warning">Scheduled to start {formatTime(active.startsAt)}. This may describe future work.</p>}{active.conditionUnknown && <p className="camera-warning">No current condition report is available. The details below may be old; do not treat them as current road conditions.</p>}<p className="description">{active.description}</p>{active.updatedAt && <p className="report-updated">Source updated {formatTime(active.updatedAt)}</p>}
               {active.facts?.length > 0 && <dl className="place-facts">{active.facts.map((fact) => <div key={fact.label}><dt>{fact.label}</dt><dd>{fact.value}</dd></div>)}</dl>}{active.segments?.length > 0 && <p className="category-hint">Conditions apply to the highlighted road segment, not just the marker.</p>}
+              {active.type === 'incident' && <IncidentHistory key={active.id} incidentId={active.id} />}
               {(active.type === 'incident' || active.type === 'construction') && <><section className="nearby-cameras"><h4>Take a look nearby</h4><p>Official snapshots within 5 km. Cameras may face a different road or direction.</p>{nearby.map((camera) => <button key={camera.id} onClick={() => openCamera(camera)}><Eye size={15} /><span>{camera.road}<small>{camera.distance.toFixed(1)} km · {camera.location}</small></span><ArrowRight size={13} /></button>)}{!nearby.length && <p>{cameras.error ? 'Camera information is unavailable.' : 'No cameras listed nearby.'}</p>}</section><details><summary>Source & schedule</summary><p>{active.organization}</p><p>Reported {formatTime(active.reportedAt)}</p><p>Start {formatTime(active.startsAt)}</p><p>Planned end {formatTime(active.plannedEndAt)}</p>{active.schedule && <p>{active.schedule}</p>}{active.comment && <p>{active.comment}</p>}<p>Traffic trend is unknown. Snapshots do not establish speed or clearance.</p></details></>}
             </>}
             <a className="official-link" href={active.source === 'City of Toronto' ? 'https://open.toronto.ca/dataset/traffic-cameras/' : 'https://511on.ca/'} target="_blank" rel="noreferrer">Check official source<ArrowUpRight size={15} /></a>

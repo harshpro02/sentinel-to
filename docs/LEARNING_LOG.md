@@ -1,5 +1,15 @@
 # Learning log
 
+## November 15, 2026: Incident report timeline
+
+Added an on-demand Report history section for incident details without redesigning the existing interface. It shows first/last observation times, up to 20 saved versions in newest-first order, and previous/current values for changed report fields. Construction catalog entries do not request incident history. Loading, no saved observations, temporary failure and retry are independent of the current report. Requests are cancelled on selection changes and have a 15-second timeout.
+
+Concepts: a version is a saved report at an observation time; comparing adjacent versions reveals changed fields. An AbortController cancels an obsolete request, and effect cleanup prevents its result from appearing under another incident. Observation times are distinct from provider update times and do not establish clearance.
+
+Validation: six frontend tests and the production build passed. The backend suite passed 26 tests with three database tests initially skipped; after starting Docker, all four storage/API tests passed including the three real PostgreSQL integration tests. Browser checks with explicitly synthetic test records passed changed-field comparison, ordering, selection changes, 404, 503/retry, desktop/mobile layout and no page errors. Inspected desktop/mobile screenshots. The first browser attempt timed out during page loading; the repeat used a longer navigation allowance and completed. The existing large Cesium bundle warning remains. No AWS resources were created.
+
+Interview question: Why distinguish first observed from incident start time? Model answer: Sentinel may begin collecting after an incident starts. First observed describes our evidence, while the provider supplies its own report and start times. Equating them would invent an incident timeline we did not observe.
+
 ## November 9, 2026 :  Explore frontend and Toronto skyline
 
 Built a React/Vite Explore screen with demonstration incidents, road search, layer filtering, incident details, keyboard access, responsive layout and localhost hot reload. Replaced the initial MapLibre implementation with CesiumJS at Harsh's request. Added a downtown subset of the City's 2025 3D Massing geometry and a return-to-skyline control. No AWS resources were provisioned.

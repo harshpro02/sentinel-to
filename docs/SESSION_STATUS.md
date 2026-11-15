@@ -20,7 +20,7 @@
 
 ## Next work, in order
 
-1. Add the saved incident timeline to the details panel. Storage and API exist; the timeline is not displayed yet.
+1. Saved incident history is now displayed in the details panel (November 15): latest 20 versions, changed fields, observation times and independent failure/retry states. Continue with contradictory provider records below.
 2. Resolve contradictory provider records, such as a facility marked Open whose description says closed. Show conflicts explicitly and avoid presenting old status as confirmed availability.
 3. Finish visual refinement and reduce initial Cesium loading cost. The illustrated isometric Toronto direction remains a separate small-area prototype, not an implemented renderer.
 4. Prepare production serving: containerize frontend/API, complete Docker Compose, configure HTTPS, request limits, health/restart handling, database backup and tested recovery.
