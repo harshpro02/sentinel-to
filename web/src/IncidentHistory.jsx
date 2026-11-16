@@ -41,6 +41,15 @@ export default function IncidentHistory({ incidentId }) {
     {state.empty && <p role="status">No saved observations yet. Collection may not have recorded this report.</p>}
     {state.error && <div role="status"><p>Saved history is temporarily unavailable. The current report remains available above.</p><button className="load-more" onClick={() => setAttempt(attempt + 1)}>Retry history</button></div>}
     {data && <>
+      {data.assessment && <div className={`wait-reroute wait-reroute-${data.assessment.status}`} aria-label="Official report change assessment">
+        <div className="wait-reroute-head">
+          <span className="wait-reroute-status">{({ increased: 'Reported impact increased', reduced: 'Reported impact reduced', unchanged: 'Reported impact unchanged', unknown: 'Report change unknown' })[data.assessment.status]}</span>
+          <span className="wait-reroute-confidence">{({ none: 'Insufficient evidence', low: 'Unvalidated comparison' })[data.assessment.confidence]}</span>
+        </div>
+        <p className="wait-reroute-advice">{data.assessment.advice}</p>
+        <p className="wait-reroute-basis">{data.assessment.basis}</p>
+        <p className="wait-reroute-note">{data.assessment.note}</p>
+      </div>}
       <dl className="history-summary"><div><dt>First observed</dt><dd>{formatTime(data.firstSeenAt)}</dd></div><div><dt>Last observed in feed</dt><dd>{formatTime(data.lastSeenAt)}</dd></div></dl>
       <ol className="history-list">{data.versions.map((version, index) => {
         const older = data.versions[index + 1];

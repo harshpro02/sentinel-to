@@ -11,6 +11,7 @@ from fastapi import FastAPI, HTTPException, Query, Response
 
 from api.feeds import Feeds, FeedUnavailable, public_camera
 from api.storage import IncidentStore, connection_settings
+from api.trend import assess
 from api.catalog import RESOURCES
 from api.city_cameras import CityCameras, merge_cameras
 
@@ -151,7 +152,7 @@ async def incident_history(incident_id: str, limit: int = Query(default=20, ge=1
         raise HTTPException(503, 'Incident history is temporarily unavailable.') from None
     if result is None:
         raise HTTPException(404, 'No recorded history for this report.')
-    return result
+    return {**result, 'assessment': assess(result)}
 
 
 @app.get('/api/cameras/{camera_id}/views/{view_id}/snapshot')

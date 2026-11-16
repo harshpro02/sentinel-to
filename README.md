@@ -2,7 +2,7 @@
 
 An Ontario road awareness map built from official Ontario 511 reports and camera information, plus direct City of Toronto cameras. Opens over the GTA, with province-wide regional navigation, searchable reports, source timestamps and nearby official camera snapshots.
 
-**Wait or Reroute, in progress:** traffic trends currently remain unknown. Official reports and nearby images supply evidence; snapshots alone do not establish speed, clearance or a faster alternative route. Vehicle counting and validated trend analysis remain planned.
+**Wait or Reroute, in progress:** report history now includes a comparison of the latest two saved versions; traffic trends remain unknown. Official reports and nearby images supply evidence; snapshots alone do not establish speed, clearance or a faster alternative route. Vehicle counting and validated trend analysis remain planned.
 
 **Status:** in progress.
 
@@ -85,6 +85,12 @@ npm run build
 ```
 
 The production output is `web/dist/`, including Cesium's required static assets. The initial Cesium bundle is substantial; download and frame-rate optimization remain release work. Production serving, HTTPS and AWS deployment are not implemented yet.
+
+## Report-change assessment
+
+Incident history returns an `assessment` alongside saved versions. It compares the latest version with its immediate predecessor, reporting increased, reduced or unchanged official report impact. Unknown severity is not ranked below known severity. Missing, timezone-naive, future or feed-observation times older than five minutes yield unknown; five minutes is Sentinel's conservative freshness policy, not a provider guarantee. One known-impact version repeatedly listed for at least 20 minutes can be labelled report unchanged, never traffic steady.
+
+The UI describes report changes rather than road clearance or route advice. Qualitative confidence remains low or none and is unvalidated; more saved versions do not raise it. Traffic speed, clearance and faster alternatives remain unknown. History query limits affect which comparisons are available; a single recent version does not establish a change.
 
 ## Feed and camera behaviour
 

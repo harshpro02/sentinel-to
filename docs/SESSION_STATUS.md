@@ -25,7 +25,7 @@
 3. Finish visual refinement and reduce initial Cesium loading cost. The illustrated isometric Toronto direction remains a separate small-area prototype, not an implemented renderer.
 4. Prepare production serving: containerize frontend/API, complete Docker Compose, configure HTTPS, request limits, health/restart handling, database backup and tested recovery.
 5. Deploy to AWS EC2 with an IAM role, scoped permissions, budget review and monitoring. If image storage is introduced, configure S3 and 24-hour retention before enabling it. No AWS resources were created in this session.
-6. Build and validate Wait or Reroute using incident history and reliable camera evidence. Vehicle counting, baselines and validated trends remain unimplemented; current trends stay unknown.
+6. History now includes a report-impact comparison (November 16), with freshness checks and report-only labels. Validate Wait or Reroute using reliable camera evidence before making traffic predictions. Vehicle counting, traffic baselines and validated traffic trends remain unimplemented; traffic trends stay unknown.
 7. Add saved places/corridors and relevant alerts. Verify any additional weather or transit source before integration; transit hub locations do not include departures.
 8. Measure API latency, loading time, recovery behaviour and AWS costs. Finish clean-checkout deployment instructions and the portfolio walkthrough using measured results.
 

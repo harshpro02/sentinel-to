@@ -1,5 +1,15 @@
 # Learning log
 
+## November 16, 2026: Review of report-change assessment
+
+Reviewed the new history assessment API, tests and detail card. Corrected stale evidence handling, unknown severity being ranked below known severity, and comparing the latest report only with an old baseline despite an intervening reversal. The comparison now uses the latest two saved versions and describes increased, reduced or unchanged reported impact. Missing/future/naive or older-than-five-minute last-seen timestamps produce unknown. More versions do not increase the unvalidated confidence label. Removed predictions of clearance, delays and better routes.
+
+Concepts: a baseline is the version used for comparison; using the immediately preceding version makes the latest change explicit. Missing values are not measurements of low impact. Observation freshness is separate from actual traffic conditions. The five-minute limit is a product policy, not a provider guarantee.
+
+Added regression coverage for stale/invalid evidence, unknown severity, direction reversal, confidence and the history endpoint contract. Frontend tests and the production build passed; the existing large Cesium bundle warning remains. Database storage code was unchanged and database-dependent tests were not enabled for this review.
+
+Interview question: Why does a missing severity value not count as improvement? Model answer: missing data contains no evidence that impact fell. Ranking unknown as zero can turn a lost observation into a false improvement, so the assessment remains unknown instead.
+
 ## November 15, 2026: Incident report timeline
 
 Added an on-demand Report history section for incident details without redesigning the existing interface. It shows first/last observation times, up to 20 saved versions in newest-first order, and previous/current values for changed report fields. Construction catalog entries do not request incident history. Loading, no saved observations, temporary failure and retry are independent of the current report. Requests are cancelled on selection changes and have a 15-second timeout.
