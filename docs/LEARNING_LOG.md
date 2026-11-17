@@ -130,3 +130,11 @@ Concepts: a keyboard event handler checks modifier keys and the pressed key; pre
 Validation: six frontend tests and the production build passed. Browser checks confirmed shortcut focus, clear-button focus restoration and a hidden shortcut hint on mobile, with no JavaScript errors. Local app health reported storage ok. The existing Cesium bundle-size warning remains.
 
 Interview question: Why use a ref for input focus? Model answer: a ref provides access to the existing DOM input so the event handler can call focus. Query text remains React state because changes to it affect the displayed results.
+
+## November 17: Production release preparation
+
+Reviewed the shared EC2 deployment, added production authentication, release, backup and decommissioning instructions, and restarted Docker Desktop. Backend validation: 45 tests, 42 passed and three database-dependent tests skipped. Frontend: six tests passed and production build succeeded, with the existing large Cesium bundle warning. Deployment scripts compile and git whitespace checks pass. AWS browser authentication is pending; no cloud deployment is claimed.
+
+Concepts: temporary AWS credentials avoid permanent access keys; an instance role supplies the server's scoped AWS permissions; private Docker networks keep PostgreSQL off public ports. A backup is verified by restoring into a separate database, rather than overwriting production.
+
+Interview question: Why keep the migration credential separate from the running API credential? Model answer: schema changes require broader privileges, while ordinary API requests should only access application data. Separate roles reduce the impact of an application vulnerability.

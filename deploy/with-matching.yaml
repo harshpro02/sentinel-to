@@ -1,0 +1,59 @@
+services:
+  web:
+    mem_limit: 96m
+    environment:
+      MATCHING_SITE_ADDRESS: ${MATCHING_SITE_ADDRESS:?Set MATCHING_SITE_ADDRESS}
+    volumes:
+      - ./deploy/Caddyfile.portfolio:/etc/caddy/Caddyfile:ro
+    depends_on:
+      matching-api: {condition: service_healthy}
+  matching-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: matching_engine
+      POSTGRES_USER: matching
+      POSTGRES_PASSWORD: ${MATCHING_DATABASE_PASSWORD:?Set MATCHING_DATABASE_PASSWORD}
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    command: [postgres, -c, shared_buffers=32MB, -c, max_connections=30, -c, work_mem=2MB]
+    volumes: [matching_data:/var/lib/postgresql/data]
+    networks: [matching_database]
+    mem_limit: 192m
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U matching -d matching_engine]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+    logging:
+      options: {max-size: 10m, max-file: '3'}
+  matching-api:
+    image: ${IMAGE_REGISTRY_PREFIX:-}matching-engine:${MATCHING_IMAGE_TAG:-local}
+    environment:
+      SPRING_PROFILES_ACTIVE: production
+      DB_HOST: matching-db
+      DB_PORT: '5432'
+      DB_NAME: matching_engine
+      DB_USER: matching
+      DB_PASSWORD: ${MATCHING_DATABASE_PASSWORD:?Set MATCHING_DATABASE_PASSWORD}
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=60 -XX:+ExitOnOutOfMemoryError
+      PORT: '8080'
+    networks: [matching_database, edge]
+    depends_on:
+      matching-db: {condition: service_healthy}
+    mem_limit: 640m
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    logging:
+      options: {max-size: 10m, max-file: '3'}
+  api:
+    mem_limit: 384m
+  db:
+    command: [postgres, -c, shared_buffers=32MB, -c, max_connections=30, -c, work_mem=2MB]
+    mem_limit: 192m
+networks:
+  matching_database: {internal: true}
+volumes:
+  matching_data:

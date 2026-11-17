@@ -12,6 +12,8 @@ from fastapi import FastAPI, HTTPException, Query, Response
 from api.feeds import Feeds, FeedUnavailable, public_camera
 from api.storage import IncidentStore, connection_settings
 from api.trend import assess
+from api.limits import PublicRequestLimit
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 from api.catalog import RESOURCES
 from api.city_cameras import CityCameras, merge_cameras
 
@@ -57,7 +59,13 @@ async def lifespan(app):
                     await collector
 
 
-app = FastAPI(title='Sentinel API', lifespan=lifespan)
+public_docs = os.getenv('SENTINEL_PUBLIC_DOCS', '1') == '1'
+app = FastAPI(title='Sentinel API', lifespan=lifespan, docs_url='/docs' if public_docs else None, redoc_url=None, openapi_url='/openapi.json' if public_docs else None)
+allowed_hosts = [host.strip() for host in os.getenv('SENTINEL_ALLOWED_HOSTS', '*').split(',') if host.strip()]
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
+request_limit = int(os.getenv('SENTINEL_REQUESTS_PER_MINUTE', '0'))
+if request_limit > 0:
+    app.add_middleware(PublicRequestLimit, limit=request_limit)
 
 
 @app.get('/api/health')

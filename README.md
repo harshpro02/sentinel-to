@@ -6,6 +6,8 @@ An Ontario road awareness map built from official Ontario 511 reports and camera
 
 **Status:** in progress.
 
+Production deployment, authentication and recovery instructions: [docs/PRODUCTION.md](docs/PRODUCTION.md). Production configuration is prepared; a public AWS release must be verified separately from local development.
+
 ## Local development
 
 Requires Python 3.10+ and Node.js 22.12+ (developed with Node 24). Create an Ontario 511 developer key through the [official developer resources](https://511on.ca/developers/resources).

@@ -19,3 +19,7 @@ frames/
 
 # Collected data
 data/
+
+backups/
+
+deploy/*.local.json
