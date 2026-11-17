@@ -4,9 +4,11 @@ An Ontario road awareness map built from official Ontario 511 reports and camera
 
 **Wait or Reroute, in progress:** report history now includes a comparison of the latest two saved versions; traffic trends remain unknown. Official reports and nearby images supply evidence; snapshots alone do not establish speed, clearance or a faster alternative route. Vehicle counting and validated trend analysis remain planned.
 
-**Status:** in progress.
+**Live AWS demo:** https://sentinel.54.162.93.68.sslip.io
 
-Production deployment, authentication and recovery instructions: [docs/PRODUCTION.md](docs/PRODUCTION.md). Production configuration is prepared; a public AWS release must be verified separately from local development.
+**Status:** deployed on EC2 with HTTPS, persistent PostgreSQL report history and tested S3 backup recovery. Traffic prediction and vehicle counting remain in progress.
+
+Production deployment, authentication and recovery instructions: [docs/PRODUCTION.md](docs/PRODUCTION.md). Public HTTPS, official reports, incident history and mobile layout were verified on November 17, 2026.
 
 ## Local development
 

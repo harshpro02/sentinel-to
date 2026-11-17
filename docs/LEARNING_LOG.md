@@ -138,3 +138,11 @@ Reviewed the shared EC2 deployment, added production authentication, release, ba
 Concepts: temporary AWS credentials avoid permanent access keys; an instance role supplies the server's scoped AWS permissions; private Docker networks keep PostgreSQL off public ports. A backup is verified by restoring into a separate database, rather than overwriting production.
 
 Interview question: Why keep the migration credential separate from the running API credential? Model answer: schema changes require broader privileges, while ordinary API requests should only access application data. Separate roles reduce the impact of an application vulnerability.
+
+## November 17: Verified AWS production release
+
+Authenticated with temporary AWS browser credentials, validated CloudFormation and deployed the shared EC2 host. Corrected the Java startup health grace period after observing an 86-second cold start. Verified HTTPS, fresh official reports, report history, mobile layout and real Crossing fills in a browser. Both database backups uploaded to S3 and restored into separate temporary databases without modifying production. Updated README and session status with public URLs and the remaining limitations.
+
+Concepts: DNS maps the generated hostname to the Elastic IP; Caddy obtains and renews HTTPS certificates; a startup grace period lets a slow service initialize before health failures block dependent services. Healthy containers alone do not establish that the public application works.
+
+Interview question: How did you verify recoverability? Model answer: I created PostgreSQL custom-format backups, uploaded them to private S3 storage, restored each into a new temporary database and checked incident/version and order/trade row counts, then removed only those temporary databases.

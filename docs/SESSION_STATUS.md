@@ -1,4 +1,19 @@
-# Sentinel handoff: November 10, 2026
+# Sentinel status: November 17, 2026
+
+## Current release
+
+- AWS EC2 release is live at https://sentinel.54.162.93.68.sslip.io. Crossing shares the host at https://exchange.54.162.93.68.sslip.io.
+- One t3.small host in us-east-1, encrypted 20 GiB gp3 disk, public HTTP/HTTPS only, private PostgreSQL containers and scoped instance role. Administration uses Systems Manager.
+- Released Sentinel tag `a977dcbc1d52` and Crossing tag `22e9f48b4590`. The first attempt exposed a short Java startup grace period; the production override now allows 120 seconds before enforcing startup health.
+- Verified public HTTPS, fresh Ontario 511 feed (451 records at verification), incident history, mobile layout and actual 80/20 trade execution. Browser check had no page errors. Missing static assets return 404.
+- Both databases were backed up to private S3 storage and restored into isolated databases: 451 incidents/451 versions and 10 orders/2 trades. Production data was not overwritten. Nightly backup is configured.
+- Backend tests: 42 passed and three database-dependent tests skipped in this run; frontend six passed and production build succeeded. Crossing 62 unit tests passed. The existing Cesium bundle warning remains.
+- Estimated baseline around USD 21/month before credits, taxes, traffic, registry and backup storage. Remaining credits have not been verified. Review Billing regularly; the budget alarm does not stop spending.
+- Next: measure loading and API latency, reduce initial bundle cost, handle contradictory provider records and validate future traffic trend features. Vehicle counting, verified live video and traffic predictions are not implemented.
+
+## Historical handoff: November 10, 2026
+
+The sections below preserve the earlier handoff. The current release above supersedes its deployment status and next-work list.
 
 ## Completed
 
