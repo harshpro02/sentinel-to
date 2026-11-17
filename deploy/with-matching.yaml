@@ -29,6 +29,8 @@ services:
       options: {max-size: 10m, max-file: '3'}
   matching-api:
     image: ${IMAGE_REGISTRY_PREFIX:-}matching-engine:${MATCHING_IMAGE_TAG:-local}
+    healthcheck:
+      start_period: 120s
     environment:
       SPRING_PROFILES_ACTIVE: production
       DB_HOST: matching-db

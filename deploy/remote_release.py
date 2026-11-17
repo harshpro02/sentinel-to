@@ -48,7 +48,7 @@ def main():
     run(compose + ['pull', '--quiet'])
     run(['docker', 'logout', registry])
     run(compose + ['run', '--rm', '--no-deps', 'web', 'caddy', 'validate', '--config', '/etc/caddy/Caddyfile', '--adapter', 'caddyfile'])
-    run(compose + ['up', '-d', '--no-build', '--wait', '--wait-timeout', '240'])
+    run(compose + ['up', '-d', '--no-build', '--wait', '--wait-timeout', '360'])
     current = root / 'current'
     previous = root / 'previous'
     if current.is_symlink():
