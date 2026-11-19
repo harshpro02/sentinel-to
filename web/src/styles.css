@@ -30,3 +30,10 @@
 .wait-reroute-advice{margin:8px 0 0;font-size:13px;color:#e7edf2;line-height:1.5}
 .wait-reroute-basis{margin:6px 0 0;font-size:12px;color:var(--muted);line-height:1.4}
 .wait-reroute-note{margin:7px 0 0;font:10px var(--mono);color:var(--muted);line-height:1.5}
+.saved-areas { margin: 12px 0; padding: 12px; border: 1px solid currentColor; border-radius: 10px; }
+.saved-areas h2 { font-size: 1rem; margin: 0; }
+.saved-areas p, .saved-areas li { font-size: .85rem; margin: 6px 0; }
+.saved-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.saved-actions button, .saved-actions select { max-width: 100%; min-width: 0; padding: 6px; }
+.saved-areas ul { padding-inline-start: 18px; }
+.saved-areas li span { display: block; }

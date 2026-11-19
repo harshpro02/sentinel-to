@@ -59,6 +59,12 @@ Map markers use category icons. Nearby markers are grouped without number badges
 
 Press Ctrl+K (or Command+K) to focus the explorer search. Clearing a search keeps focus in the input. The shortcut does not interrupt an open camera dialog.
 
+Select a map result to save a place within a 5 km radius. Incident and construction
+results also let you save their official road name within the selected region.
+Choose a saved area to see relevant official reports and feed freshness. The
+road match uses the provider's road name and region bounds. Saved areas stay in
+the current browser. Reports refresh while a saved area is selected.
+
 Select an incident to view Report history: the latest 20 saved versions, first/last observation times and previous/current values for changed report fields. Times use Toronto time. History is loaded only for the selected incident, with separate loading, no-history and retry states. Observation times are not incident start or clearance times. Construction catalog entries do not use incident history.
 
 Real feed failures show an error or clearly marked stale results; the running app never silently substitutes demo incidents. The old `demo.js` data remains solely for the existing filtering tests and is not imported by the live application.

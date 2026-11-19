@@ -4,6 +4,7 @@ import { ArrowLeft, ArrowRight, ArrowUpRight, BusFront, ChevronDown, CloudSnow, 
 import OntarioMap, { regions } from './OntarioMap';
 import CameraViewer from './CameraViewer';
 import IncidentHistory from './IncidentHistory';
+import SavedAreas from './SavedAreas';
 import { distanceKm, formatTime, useFeed } from './feeds';
 import { categories, categoryMatches, itemMatches } from './categories';
 import './styles.css';
@@ -99,6 +100,7 @@ function App() {
         <label className="region-picker"><MapPin size={14} /><span>Exploring</span><select aria-label="Map region" value={region} onChange={(event) => { setRegion(event.target.value); setSelectedId(null); }}>{Object.entries(regions).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}</select></label>
         {!active && <button className="downtown-shortcut" onClick={() => { chooseCategory('cameras'); setRegion('downtown'); }}><Eye size={19} /><span>Downtown cameras<small>Street-level views around the core</small></span><ArrowRight size={14} /></button>}
         {!active && <><div className="browse-heading"><span>{query ? 'Matching categories' : 'What are you looking for?'}</span><button aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>{expanded ? 'Less' : 'All categories'}<ChevronDown size={12} /></button></div><div className="category-grid">{visibleCategories.map((entry) => { const Icon = icons[entry.icon]; return <button key={entry.id} className={category === entry.id ? 'category-button chosen' : 'category-button'} aria-pressed={category === entry.id} title={entry.hint} onClick={() => chooseCategory(entry.id)}><Icon size={18} /><span>{entry.label}</span></button>; })}</div>{category !== 'explore' && <button className="back-button explore-back" onClick={() => chooseCategory('explore')}><ArrowLeft size={13} /> Back to explore</button>}</>}
+        <SavedAreas active={active} region={regions[region]} />
         <section id="activity" tabIndex={-1} aria-labelledby="activity-title">
           <div className="section-title explore-section"><h2 id="activity-title">{active ? active.label : category === 'explore' ? query ? 'Matching reports' : 'Worth a look' : metadata?.label}</h2>{!active && category !== 'explore' && <span className="count">{results.length} in region</span>}</div>
           {!active && metadata && <p className="category-hint">{metadata.hint}</p>}
