@@ -1,4 +1,5 @@
 import hashlib
+import re
 from datetime import datetime, timezone
 
 from api.feeds import coordinates, normalize_events, timestamp
@@ -35,6 +36,28 @@ def text(value):
     if isinstance(value, list):
         return ', '.join(str(part) for part in value if isinstance(part, (str, int, float)))[:2000]
     return str(value)[:4000] if isinstance(value, (str, int, float)) else ''
+
+
+FACILITY_CATEGORIES = {
+    'rest-areas', 'truck-rest-areas', 'service-centres', 'travel-info',
+    'carpool-lots', 'inspection-stations', 'ferries', 'transit-hubs',
+}
+FACILITY_STATUS = re.compile(
+    r'(?:^|[.!?]\s+)(?:this (?:site|facility|rest area|service centre) (?:is |has been )?)'
+    r'(?:(?:currently|temporarily|permanently) )?(closed|open)\b',
+    re.IGNORECASE,
+)
+
+
+def facility_status_conflicts(row):
+    status = text(row.get('Status')).strip().lower()
+    if status not in ('open', 'closed'):
+        return False
+    return any(
+        match[1].lower() != status
+        for field in ('Details', 'Comments', 'RouteDescription')
+        for match in FACILITY_STATUS.finditer(text(row.get(field)).strip())
+    )
 
 
 def decode_polyline(value):
@@ -96,11 +119,15 @@ def normalize_resource(category, rows):
         facts = [{'label': caption, 'value': {'Y': 'Yes', 'N': 'No'}.get(text(row[field]), text(row[field]))} for field, caption in FACT_FIELDS.items() if text(row.get(field))]
         updated = timestamp(row.get('LastUpdated'))
         condition_unknown = category == 'road-conditions' and (not updated or (datetime.now(timezone.utc) - datetime.fromisoformat(updated)).total_seconds() > 21600 or title.lower() in ('no report', 'unknown'))
+        status_conflict = category in FACILITY_CATEGORIES and facility_status_conflicts(row)
+        if status_conflict:
+            title = 'Availability unconfirmed'
         result.append({
             'id': f'511-{category}-{identity}', 'type': category, 'label': label,
             'road': name, 'location': location, 'title': title,
             'description': text(row.get('Details') or row.get('Comments') or row.get('RouteDescription') or row.get('Amenities') or location),
             'coordinates': position, 'source': 'Ontario 511', 'severity': 'unknown',
             'updatedAt': updated, 'facts': facts, 'segments': segments, 'conditionUnknown': condition_unknown,
+            'statusConflict': status_conflict,
         })
     return result

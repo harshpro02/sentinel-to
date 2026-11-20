@@ -19,6 +19,21 @@ class CatalogTests(unittest.TestCase):
             self.assertEqual(next(fact['value'] for fact in item['facts'] if fact['label'] == 'Fuel'), 'No')
         self.assertEqual(normalize_resource('rest-areas', [{**row, 'Latitude': float('nan')}]), [])
 
+    def test_facility_status_conflicts_preserve_reported_status(self):
+        row = {'Latitude': 43.7, 'Longitude': -79.4, 'Status': 'Open'}
+        item = normalize_resource('rest-areas', [
+            {**row, 'Details': 'This site is closed as of April 21, 2025'},
+        ])[0]
+        self.assertTrue(item['statusConflict'])
+        self.assertEqual(item['title'], 'Availability unconfirmed')
+        self.assertIn({'label': 'Reported status', 'value': 'Open'}, item['facts'])
+
+        item = normalize_resource('rest-areas', [
+            {**row, 'Details': 'Washrooms closed. Parking lot open to trucks.'},
+        ])[0]
+        self.assertFalse(item['statusConflict'])
+        self.assertEqual(item['title'], 'Open')
+
     def test_road_conditions_decode_segments_and_do_not_claim_old_data_is_current(self):
         encoded = '_p~iF~ps|U_ulLnnqC_mqNvxq`@'
         self.assertEqual(decode_polyline(encoded), [[-120.2, 38.5], [-120.95, 40.7], [-126.453, 43.252]])
