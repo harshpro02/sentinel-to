@@ -94,7 +94,7 @@ npm test
 npm run build
 ```
 
-The production output is `web/dist/`, including Cesium's required static assets. The initial Cesium bundle is substantial; download and frame-rate optimization remain release work. Production serving, HTTPS and AWS deployment are not implemented yet.
+The production output is `web/dist/`, including Cesium's required static assets. The initial Cesium bundle is substantial; download and frame-rate optimization remain open work. Production serving uses the containerized release described in [AWS deployment](#aws-deployment).
 
 ## Report-change assessment
 
@@ -125,16 +125,20 @@ The street map uses OpenStreetMap imagery with attribution visible in the viewer
 
 Ontario 511 data is provided as available and may differ from actual road conditions. Source attribution links to [Ontario 511](https://511on.ca/). See its [Developer Access Agreement](https://511on.ca/developers/resources) and [Open Government Licence - Ontario](https://www.ontario.ca/page/open-government-licence-ontario). Publicly accessible source images remain subject to their provider's applicable terms; Sentinel does not claim endorsement or control of camera availability. No verified video stream is integrated.
 
-## Planned AWS deployment
+## AWS deployment
 
-The local Compose file currently starts PostgreSQL only. The API and frontend still run on the host. AWS, HTTPS, backups, public request limits and full production container serving remain release work. Supply only runtime credentials to the deployed API, keep the administrator credentials for migration jobs, and never expose the database port publicly. HTTP client request logs are disabled at INFO/DEBUG levels because upstream URLs contain the feed key. Do not enable verbose HTTP tracing with real credentials.
+Sentinel runs on one EC2 t3.small host defined with CloudFormation. Docker Compose starts the API, the built frontend and PostgreSQL as containers; Caddy terminates HTTPS. Only ports 80 and 443 are public, PostgreSQL has no host port, and administration uses Systems Manager instead of SSH. The host reaches AWS through a scoped instance role, so no AWS keys are stored on the server. The Ontario 511 key is stored as an SSM SecureString.
+
+Migrations use the administrator credential; the running API uses the restricted application role. Nightly PostgreSQL backups go to private encrypted S3 storage, and recovery was verified by restoring into a separate database. HTTP client request logs are disabled at INFO/DEBUG levels because upstream URLs contain the feed key. Do not enable verbose HTTP tracing with real credentials. Release steps, costs and shutdown: [docs/PRODUCTION.md](docs/PRODUCTION.md).
 
 ```text
-Official feeds → Python fetcher → PostgreSQL + S3 images (24-hour retention)
-                                     ↓
-                              FastAPI → React/Cesium
-Docker Compose on EC2; S3 access through an EC2 IAM role
+Ontario 511 + City of Toronto feeds → FastAPI (collector, cache, rate limits) → PostgreSQL report history
+                                              ↓
+                                        React/Cesium web
+Docker Compose on EC2 behind Caddy HTTPS; nightly backups to S3 through the instance role
 ```
+
+Camera images are not stored. Saving frames to S3 with 24-hour retention is planned for vehicle counting and has not been built.
 
 See [delivery plan](docs/DELIVERY_PLAN.md) and [learning log](docs/LEARNING_LOG.md).
 
