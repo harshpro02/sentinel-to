@@ -55,8 +55,16 @@ def main():
         ]:
             print('Building a release image before creating cloud resources.', flush=True)
             checked(command, stdout=subprocess.DEVNULL)
+        existing_stack = aws('cloudformation', 'list-stacks', '--stack-status-filter', 'CREATE_COMPLETE', 'UPDATE_COMPLETE', 'UPDATE_ROLLBACK_COMPLETE', '--query', "StackSummaries[?StackName=='portfolio-demo'].StackName")
+        if existing_stack:
+            running = aws('cloudformation', 'describe-stacks', '--stack-name', 'portfolio-demo', '--query', "Stacks[0].Outputs[?OutputKey=='InstanceId'].OutputValue | [0]")
+            host_ami = aws('ec2', 'describe-instances', '--instance-ids', running, '--query', 'Reservations[0].Instances[0].ImageId')
+            print(f'Keeping the running host image {host_ami}; the instance and its database disk are not replaced.', flush=True)
+        else:
+            host_ami = aws('ssm', 'get-parameter', '--name', '/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64', '--query', 'Parameter.Value')
+            print(f'New stack: using the current Amazon Linux 2023 image {host_ami}.', flush=True)
         print('Provisioning the portfolio-demo stack; existing local databases are not uploaded.', flush=True)
-        aws('cloudformation', 'deploy', '--stack-name', 'portfolio-demo', '--template-file', '/workspace/deploy/aws-portfolio.json', '--capabilities', 'CAPABILITY_IAM', '--no-fail-on-empty-changeset', '--tags', 'Project=portfolio-demo', raw=True)
+        aws('cloudformation', 'deploy', '--stack-name', 'portfolio-demo', '--template-file', '/workspace/deploy/aws-portfolio.json', '--capabilities', 'CAPABILITY_IAM', '--no-fail-on-empty-changeset', '--parameter-overrides', f'HostAmi={host_ami}', '--tags', 'Project=portfolio-demo', raw=True)
         stack = aws('cloudformation', 'describe-stacks', '--stack-name', 'portfolio-demo')['Stacks'][0]
         outputs = {item['OutputKey']: item['OutputValue'] for item in stack['Outputs']}
         prefix = outputs['RegistryPrefix']

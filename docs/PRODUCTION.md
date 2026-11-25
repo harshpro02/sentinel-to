@@ -31,6 +31,10 @@ Verify both HTTPS pages, Sentinel health and official feed timestamps, incident 
 
 Nightly backups run at 04:17 server time, create PostgreSQL custom-format archives and upload them to private encrypted S3 storage. Local archives expire after seven days and S3 archives after fourteen days. Manually run `/usr/bin/python3 /opt/portfolio/current/deploy/backup_remote.py` through Systems Manager for the first backup. Use `scripts/backup.py restore-check` with an archive to verify recovery into a new temporary database without changing production data.
 
+Database volumes live on the instance disk, so replacing the instance loses them. The template therefore pins `HostAmi`; the release helper passes the running host's image so a newer Amazon Linux image never triggers replacement. To move to a newer image deliberately, back up first, then plan the restore below.
+
+To restore production from a nightly archive, run through Systems Manager: take a fresh `backup_remote.py` backup, download the chosen archives from S3, run `scripts/backup.py restore-check` for each, stop `api` and `matching-api`, then run `pg_restore --single-transaction --clean --if-exists --exit-on-error` inside each database container and start the stack with `docker compose up -d --no-build --wait`. Verify row counts and the public history API afterwards. This was done on November 25, 2026.
+
 The previous release directory is retained at `/opt/portfolio/previous`. Application rollback requires selecting the previous images and verifying schema compatibility; it is not an automatic database rollback.
 
 ## Costs and shutdown

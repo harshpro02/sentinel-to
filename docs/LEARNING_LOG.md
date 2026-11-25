@@ -146,3 +146,13 @@ Authenticated with temporary AWS browser credentials, validated CloudFormation a
 Concepts: DNS maps the generated hostname to the Elastic IP; Caddy obtains and renews HTTPS certificates; a startup grace period lets a slow service initialize before health failures block dependent services. Healthy containers alone do not establish that the public application works.
 
 Interview question: How did you verify recoverability? Model answer: I created PostgreSQL custom-format backups, uploaded them to private S3 storage, restored each into a new temporary database and checked incident/version and order/trade row counts, then removed only those temporary databases.
+
+## November 25: Release, host replacement and database recovery
+
+Released saved places and conflicting facility status flags to AWS. The release unexpectedly replaced the EC2 host: the template looked up the latest Amazon Linux image on every deploy, a newer image existed, and changing an instance's image requires a new instance. The old disk, including both PostgreSQL volumes, was deleted. Took a safety backup, restore-checked the 04:17 UTC nightly archives, stopped the writers and restored each database in one transaction. About 14 hours of report history was lost. Pinned the host image and confirmed with a change set preview that the next release keeps the instance. Also corrected the README, which still described AWS as unimplemented.
+
+Concepts: some CloudFormation property changes update a resource in place, while others (such as an EC2 image) require replacement. A change set previews which. Data stored on an instance disk shares the instance's lifetime; tested backups are what made recovery possible.
+
+What went wrong: the release did not preview the stack change before applying it. Releases that touch infrastructure should check for replacements first.
+
+Interview question: How did a code-only release delete your database, and what did you change? Model answer: the template resolved the newest OS image at deploy time, so a new image forced CloudFormation to replace the instance and its disk. I restored from the verified nightly S3 backup, pinned the image to the running host's, and confirmed with a change set that the next release changes nothing.

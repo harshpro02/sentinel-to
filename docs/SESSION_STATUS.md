@@ -1,6 +1,15 @@
-# Sentinel status: November 17, 2026
+# Sentinel status: November 25, 2026
 
 ## Current release
+
+- Released Sentinel tag `ab7e9259c54c` (saved places, road reports and conflicting facility status flags) with Crossing tag `22e9f48b4590` unchanged. Public API checks confirmed the new frontend bundle, health, 462 live province-wide incidents, incident history and Crossing HTTPS.
+- Incident: this release replaced the EC2 host. The template resolved the newest Amazon Linux image on every deploy, and a newer image had been published, so CloudFormation created a new instance and deleted the old one with its disk. Both databases started empty.
+- Recovery: took a safety backup of the new state, restore-checked the November 25 04:17 UTC nightly backups into temporary databases, stopped the API writers and restored each database in a single transaction. Production then held 1,550 incidents/1,703 versions (1,515/1,668 restored plus new collector rows) and 10 orders/2 trades. Report history between 04:17 and 18:55 UTC on November 25 was lost.
+- Fix: the template now takes a pinned `HostAmi`; the release helper reuses the running host's image. A CloudFormation change set preview against the live stack reported no changes, so the next release keeps the instance.
+- Host is now `i-09c6c90ff8580bc4a`, same Elastic IP and URLs.
+- Next: measure loading and API latency, reduce initial bundle cost and validate future traffic trend features. Consider a separate EBS data volume so database storage survives even a deliberate host replacement. Vehicle counting, verified live video and traffic predictions are not implemented.
+
+## Release: November 17, 2026
 
 - AWS EC2 release is live at https://sentinel.54.162.93.68.sslip.io. Crossing shares the host at https://exchange.54.162.93.68.sslip.io.
 - One t3.small host in us-east-1, encrypted 20 GiB gp3 disk, public HTTP/HTTPS only, private PostgreSQL containers and scoped instance role. Administration uses Systems Manager.
